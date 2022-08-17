@@ -1,0 +1,17 @@
+"sample","include","data.dir","pattern","pattern_int","timepoint","time_int","cell_line","source","soupx","soupx_rho"
+"D0_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D0_600um/STARsolo","600um",600,"D0",0,"GCaMP6f hiPSCs","Hoang et al","FALSE","NA"
+"D1_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D1_600um/STARsolo","600um",600,"D1",1,"GCaMP6f hiPSCs","Hoang et al","FALSE","NA"
+"D4_200um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D4_200um/STARsolo","200um",200,"D4",4,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.076
+"D4_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D4_600um/STARsolo","600um",600,"D4",4,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.07
+"D4_1000um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D4_1000um/STARsolo","1000um",1000,"D4",4,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.14
+"D6_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D6_600um/STARsolo","600um",600,"D6",6,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.029
+"D8_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D8_600um/STARsolo","600um",600,"D8",8,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.015
+"D12_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D12_600um/STARsolo","600um",600,"D12",12,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.017
+"D20_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D20_600um/STARsolo","600um",600,"D20",20,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.025
+"D21_200um_A",FALSE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D21_200um_A/STARsolo","200um",200,"D21",21,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.031
+"D21_200um_B",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D21_200um_B/STARsolo","200um",200,"D21",21,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.011
+"D21_600um",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D21_600um/STARsolo","600um",600,"D21",21,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.039
+"D21_1000um_A",FALSE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D21_1000um_A/STARsolo","1000um",1000,"D21",21,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.048
+"D21_1000um_B",TRUE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/D21_1000um_B/STARsolo","1000um",1000,"D21",21,"GCaMP6f hiPSCs","Hoang et al","TRUE",0.03
+"Silva_multi_D100",FALSE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/Silva_multi_D100/STARsolo","NA","NA","D100",100,"GCaMP-WTC11 iPSC","Silva et al, CSC, 2021","TRUE",0.017
+"Silva_gut_D100",FALSE,"/workdir/dwm269/scCardiacOrganoid/data/STARsolo/GRCh38p13/Silva_gut_D100/STARsolo","NA","NA","D100",100,"GCaMP-WTC11 iPSC","Silva et al, CSC, 2021","TRUE",0.034
