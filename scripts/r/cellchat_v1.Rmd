@@ -1,0 +1,423 @@
+---
+title: "cellchat_v1"
+author: "DWM"
+date: "10/28/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load libs
+```{r message=FALSE, warning=FALSE}
+library(Matrix, quietly = T)
+library(dplyr, quietly = T)
+library(Seurat, quietly = T)
+library(SeuratDisk, quietly = T)
+
+library(CellChat, quietly = T)
+library(future, quietly = T)
+library(cluster, quietly = T)
+library(parallel, quietly = T)
+
+library(ggplot2, quietly = T)
+library(patchwork, quietly = T)
+library(pals, quietly = T)
+library(viridis, quietly = T)
+library(data.table, quietly = T)
+library(shades, quietly = T)
+
+source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seutils.R")
+source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seuplots.R")
+source("/home/dwm269/DWM_utils/plotting_utils/scThemes.R")
+# scTheme <- scThemes()
+```
+
+```{r}
+meta <- read.csv("/workdir/dwm269/scCardiacOrganoid/resources/metadata_v1.csv")
+meta
+```
+
+
+# Load dataset
+```{r}
+# Convert AnnData to Seurat (.h5ad -> .h5seurat)
+## https://mojaveazure.github.io/seurat-disk/articles/convert-anndata.html
+if(!file.exist("/workdir/dwm269/scCardiacOrganoid/robjs/ma_ipsc_v2.RData")){
+tmp.file = "/workdir/dwm269/scCardiacOrganoid/pyobjs/ma_iPSC_v2"
+if(!file.exists(paste0(tmp.file,".h5seurat"))){
+  Convert(
+    source=paste0(tmp.file,".h5ad"),
+    assay = "RNA",
+    dest = "h5seurat", 
+    overwrite = TRUE
+  )
+}
+
+# Load in Seurat object
+ipsc.seu <- LoadH5Seurat(
+  file = paste0(tmp.file,".h5seurat"),
+  assays=c("RNA")
+)
+
+ipsc.seu$leiden_harmony_types <- factor(
+  ipsc.seu$leiden_harmony_types,
+  levels=c(
+    "iPSCs", 
+    "Primitive Streak",
+    "Definitive Endoderm",
+    "Gut Mesenchyme",
+    "Foregut Epithelium",
+    "Liver Progenitors",
+    "Cardiac Mesoderm",
+    "Fibroblasts",
+    "Smooth Muscle",
+    "Endocardial",
+    "Epicardial",
+    "Cardiomyocytes (early)",
+    "Cardiomyocytes (late)",
+    "Extraembryonic Mesoderm"          
+  )
+)
+}else(
+  load("/workdir/dwm269/scCardiacOrganoid/robjs/ma_ipsc_v2.RData")
+)
+head(ipsc.seu)
+```
+# Plot to see that it loaded properly...
+```{r}
+DimPlot(
+  ipsc.seu,
+  group.by="leiden_harmony_types",
+  reduction="phate_harmony"
+  # cols = 
+)+
+  scTheme$umap
+```
+
+# CellChat Analysis
+```{r}
+CellChatDB <- CellChatDB.human
+showDatabaseCategory(CellChatDB)
+```
+
+```{r}
+ipsc.cellchat <- createCellChat(
+  object = GetAssayData(
+    ipsc.seu,
+    assay = "RNA",
+    slot = "data"
+  ),
+  meta = data.frame(
+    leiden_harmony_types = as.factor(ipsc.seu$leiden_harmony_types),
+    row.names = Cells(ipsc.seu)
+  ),
+  group.by = "leiden_harmony_types"
+)
+
+```
+
+```{r}
+# Set the database to use (whole CellChat database)
+ipsc.cellchat@DB <- CellChatDB.human
+
+# subset the expression data of signaling genes for saving computation cost
+ipsc.cellchat <- subsetData(
+  ipsc.cellchat
+  # features = Features(ipsc.seu)[!Features(ipsc.seu) %in% c("H2-Q8", "H2-T9", "H2-T18", "H2-Q9" ,"H2-L", "H2-BI" ,"H2-D" ,"H60a" ,"H2-Ea-ps")]
+  )
+
+# CellChat processing (memory intensive for large datasets)
+ipsc.cellchat <- identifyOverExpressedGenes(ipsc.cellchat)
+ipsc.cellchat <- identifyOverExpressedInteractions(ipsc.cellchat)
+gc()
+```
+
+```{r}
+# future::plan("multiprocess", workers = 20)
+# options(future.globals.maxSize = 1000 * 1024^2)
+
+# project gene expression data onto PPI network (optional)
+ipsc.cellchat <- projectData(ipsc.cellchat, PPI.mouse)
+
+# ipsc.cellchat@idents = droplevels(ipsc.cellchat@idents, exclude = setdiff(levels(meta$labels),unique(meta$labels)))
+
+
+ipsc.cellchat <- computeCommunProb(ipsc.cellchat)
+
+# Filter out the cell-cell communication if there are only few number of cells in certain cell groups
+ipsc.cellchat <- filterCommunication(ipsc.cellchat, min.cells = 10)
+
+ipsc.cellchat <- computeCommunProbPathway(ipsc.cellchat)
+
+ipsc.cellchat <- aggregateNet(ipsc.cellchat)
+
+# Compute the network centrality scores
+ipsc.cellchat <- netAnalysis_computeCentrality(
+  ipsc.cellchat, 
+  slot.name = "netP"
+) # the slot 'netP' means the inferred intercellular communication network of signaling pathways
+
+save(ipsc.cellchat,file="/workdir/dwm269/scCardiacOrganoid/robjs/ipsc_cellchat_v1.RData")
+plan("sequential") # clears memory usage from future parallelization
+gc()
+```
+
+## Global plotting
+```{r}
+groupSize <- as.numeric(table(ipsc.cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+netVisual_circle(
+  ipsc.cellchat@net$count, 
+  vertex.weight = groupSize, 
+  weight.scale = T,
+  label.edge= F, 
+  title.name = "Number of interactions"
+  )
+
+netVisual_circle(
+  ipsc.cellchat@net$weight, 
+  vertex.weight = groupSize, 
+  weight.scale = T, 
+  label.edge= F, 
+  title.name = "Interaction weights/strength"
+  )
+```
+
+
+```{r}
+# Heatmap
+par(mfrow = c(1,1), xpd=TRUE)
+netVisual_heatmap(
+  ipsc.cellchat,
+  slot.name="netP",
+  measure="weight",
+  # color.use = celltype.colors[sort(c(sources.use,targets.use))],
+  # sources.use = sources.use,
+  # targets.use = targets.use,
+  # cluster.rows=T, cluster.cols=T,
+  color.heatmap = "YlOrRd",
+  font.size.title = 16,
+  font.size = 14,
+  width=6,
+  height=6
+)
+```
+
+
+## Focused plotting
+### Chord plot: endo -> meso
+```{r}
+
+sources.use = c(
+  "Definitive Endoderm",
+  "Gut Mesenchyme",
+  "Foregut Epithelium"
+  # "Liver Progenitors"
+)
+targets.use = c(
+  "Cardiac Mesoderm",
+  "Fibroblasts",
+  "Smooth Muscle",
+  "Endocardial",
+  "Epicardial",
+  "Cardiomyocytes (early)",
+  "Cardiomyocytes (late)"
+)
+
+# par(mfrow = c(1,1), xpd=TRUE)
+# netVisual_chord_gene(
+#   ipsc.cellchat, 
+#   sources.use = sources.use,
+#   targets.use = targets.use,
+#   slot.name = "netP",
+#   thresh=10^-150,
+#   small.gap=0.25,
+#   big.gap=5,
+#   title.name = "Endo -> Meso",
+#   # color.use = pals::polychrome()[3:36] %>% unlist(),
+#   show.legend = T, 
+#   legend.pos.x = 0, legend.pos.y = 100,
+#   # annotationTrackHeight=0.5,
+#   lab.cex=1
+#   # width=width,
+#   # height=height
+# )
+```
+
+
+```{r}
+netVisual_bubble(
+  ipsc.cellchat, 
+  sources.use = sources.use, 
+  targets.use = targets.use,
+  thresh = 10^-150,
+  # max.dataset = 15,
+  min.quantile = c(0.5),
+  signaling = c("FN1","MK","CDH","LAMININ","PARs"),
+  remove.isolate = FALSE
+)
+```
+
+### Chord plot: meso -> endo
+```{r}
+sources.use = c(
+  "Cardiac Mesoderm",
+  "Fibroblasts",
+  "Smooth Muscle",
+  "Endocardial",
+  "Epicardial",
+  "Cardiomyocytes (early)",
+  "Cardiomyocytes (late)"
+)
+targets.use = c(
+  "Definitive Endoderm",
+  "Gut Mesenchyme",
+  "Foregut Epithelium"
+  # "Liver Progenitors"
+)
+
+par(mfrow = c(1,1), xpd=TRUE)
+netVisual_chord_gene(
+  ipsc.cellchat, 
+  sources.use = sources.use,
+  targets.use = targets.use,
+  slot.name = "netP",
+  thresh=10^-150,
+  # small.gap=0.25,
+  # big.gap=5,
+  # color.use = pals::polychrome()[3:36] %>% unlist(),
+  show.legend = T, 
+  legend.pos.x = 0, legend.pos.y = 100,
+  lab.cex=1
+  # width=width,
+  # height=height
+)
+```
+
+
+```{r}
+sources.use = c(
+  # "Cardiac Mesoderm",
+  # "Fibroblasts",
+  # "Smooth Muscle",
+  "Endocardial",
+  "Epicardial",
+  # "Cardiomyocytes (early)",
+  # "Cardiomyocytes (late)"
+  "Definitive Endoderm",
+  "Gut Mesenchyme",
+  "Foregut Epithelium"
+)
+targets.use = c(
+  # "Definitive Endoderm",
+  # "Gut Mesenchyme",
+  # "Foregut Epithelium"
+  "Cardiomyocytes (early)",
+  "Cardiomyocytes (late)"
+  # "Liver Progenitors"
+)
+netVisual_bubble(
+  ipsc.cellchat,
+  sources.use = sources.use, 
+  targets.use = targets.use,
+  thresh = 10^-150,
+  # signaling = c("MK","CDH","BMP","NCAM","CADM"),
+  signaling = c("VEGF","NRG"),
+  min.quantile = c(0.5),
+  remove.isolate = FALSE
+)
+```
+
+
+##########################
+#  Time-series analysis  #
+##########################
+```{r}
+# https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tutorial/Comparison_analysis_of_multiple_datasets.html
+seu.list <- SplitObject(
+  ipsc.seu,
+  split.by = "sample"
+)
+```
+
+Run CellChat on each sample individually
+```{r}
+cellchat.list <- lapply(
+  seu.list,
+  FUN = function(SEU){
+    tmp.cellchat <- createCellChat(
+      object = GetAssayData(
+        SEU,
+        assay = "RNA",
+        slot = "data"
+      ),
+      meta = data.frame(
+        leiden_harmony_types = droplevels(SEU$leiden_harmony_types),
+        row.names = Cells(SEU)
+      ),
+      group.by = "leiden_harmony_types"
+    )
+    print("Made tmp CellChat object...")
+    # Set the database to use (whole CellChat database)
+    tmp.cellchat@DB <- CellChatDB.human
+    
+    # subset the expression data of signaling genes for saving computation cost
+    tmp.cellchat <- subsetData(tmp.cellchat)
+    
+    # CellChat processing (memory intensive for large datasets)
+    tmp.cellchat <- identifyOverExpressedGenes(tmp.cellchat)
+    tmp.cellchat <- identifyOverExpressedInteractions(tmp.cellchat)
+    gc()
+    
+    
+    # project gene expression data onto PPI network (optional)
+    tmp.cellchat <- projectData(tmp.cellchat, PPI.mouse)
+    
+    # tmp.cellchat@idents = droplevels(tmp.cellchat@idents, exclude = setdiff(levels(meta$labels),unique(meta$labels)))
+    
+    
+    tmp.cellchat <- computeCommunProb(tmp.cellchat)
+    
+    # Filter out the cell-cell communication if there are only few number of cells in certain cell groups
+    tmp.cellchat <- filterCommunication(tmp.cellchat, min.cells = 10)
+    
+    tmp.cellchat <- computeCommunProbPathway(tmp.cellchat)
+    
+    tmp.cellchat <- aggregateNet(tmp.cellchat)
+    
+    # Compute the network centrality scores
+    tmp.cellchat <- netAnalysis_computeCentrality(
+      tmp.cellchat, 
+      slot.name = "netP"
+    ) # the slot 'netP' means the inferred intercellular communication network of signaling pathways
+    
+    return(tmp.cellchat)
+  }
+)
+
+
+```
+
+```{r}
+save(cellchat.list, file="/workdir/dwm269/scCardiacOrganoid/robjs/cellchat_list_v1.RData")
+```
+
+# Comparative analysis on the 600um samples
+```{r}
+merged.cellchat <- mergeCellChat(
+  cellchat.list[meta$patterm=="600um"], 
+  add.names = meta$sample[meta$patterm=="600um"]
+)
+```
+```{r}
+
+```
+
+
+
+```{r}
+session.info()
+```
+
