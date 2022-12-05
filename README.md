@@ -15,8 +15,12 @@ Time-resolved analysis of iPSC-derived cardiac organoid differentiation
 ### Data generated for this paper:
 - scRNAseq datasets: [GSE###](TODO)
 
+### Cell-cell interaction tools
+- [`omnipath`](https://omnipathdb.org/)
+- [`cellinker`](http://www.rna-society.org/cellinker/Download.html)
+
 ### Contact:
-- Zhen Ma ()
+- Zhen Ma (zma112@syr.edu)
 - Benjamin D. Cosgrove (bdc68@cornell.edu)
 - David W. McKellar (dwm269@cornell.edu)
-- Plansky Hoang ()
+- Plansky Hoang (phoang@syr.edu)
