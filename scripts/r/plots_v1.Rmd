@@ -1,0 +1,225 @@
+
+# Session set-up
+## Libs, setwd
+```{r message=FALSE, warning=FALSE}
+# analysis
+library(Matrix, quietly = T)
+library(dplyr, quietly = T)
+library(Seurat, quietly = T)
+library(future, quietly = T)
+# library(cluster)
+library(parallel, quietly = T)
+library(data.table, quietly = T)
+
+# plotting
+library(ggplot2, quietly = T)
+library(patchwork, quietly = T)
+library(pals, quietly = T)
+library(viridis, quietly = T)
+library(shades, quietly = T)
+
+# DWMutils
+source("~/DWM_utils/sc_utils/seurat_helpers/seutils.R")
+source("~/DWM_utils/sc_utils/seurat_helpers/seuplots.R")
+
+setwd("/workdir/dwm269/scCardiacOrganoid/")
+```
+
+## Figure settings
+```{r}
+small.font = 6*2
+big.font = 8*2
+line.width = 0.5
+pt.size=0.01
+pt.stroke=0.3
+label.size=2
+```
+## Plot themes 
+```{r}
+source("~/DWM_utils/plotting_utils/scThemes.R")
+scTheme <- scThemes(
+  small.font = small.font,
+  big.font = big.font,
+  line.width = line.width,
+  pt.size=pt.size,
+  pt.stroke=pt.stroke,
+  label.size=label.size
+)
+
+print(names(scTheme))
+```
+## Personal color palettes
+```{r}
+mckolors <- read.csv("~/DWM_utils/plotting_utils/McKolors_v1.csv") %>% 
+  as.list() %>%
+  lapply(
+    FUN=function(X) X[X!=""]
+  )
+names(mckolors)
+```
+## Load data
+```{r}
+if(is.null(scco.seu)){
+  load("data/robjs/scCO_v7-1.RData")
+}
+scco.seu$sample<-factor(
+  scco.seu$sample,
+  levels=sort(unique(scco.seu$sample))
+  )
+```
+
+Order cell types...
+```{r}
+scco.seu$cell_types <- factor(
+  scco.seu$cell_types,
+  levels=c(
+    "iPSCs","Primitive_Streak",
+    "Definitive_Endoderm","Cardiac_Mesoderm",
+    "Fibroblasts","Smooth_Muscle","Endocardial","Epicardial",
+    "Foregut_Epithelium",
+    "Cardiomyocytes",
+    "Extraembryonic_Mesoderm"
+  )
+)
+```
+
+
+## Plots!
+```{r}
+ggplot(
+    scco.seu@meta.data,
+    aes(
+        x=doublet_score,
+        fill=pattern
+    )
+)+
+    geom_histogram(
+        bins=100
+        # alpha=0.5
+    )+
+    scTheme$bar+
+    theme(
+        legend.position="right",
+        axis.text.y = element_text(angle=0),
+        strip.text = element_text(face="bold")
+    )+scale_y_log10()+
+    facet_wrap(
+        facets="sample"
+    )+labs(fill="Spot Size")
+```
+
+
+# Cell type plots
+## Cell types across differentiation
+```{r}
+ggplot(
+  scco.seu@meta.data,
+  aes(
+    x=timepoint,
+    fill=cell_types
+  )
+) +
+  geom_bar(
+    color="black",
+    position="fill"
+  ) +
+  facet_wrap(facets="pattern",ncol = 1)+
+  scTheme$bar +
+  theme(
+    legend.position = "right",
+    legend.title=element_blank(),
+    legend.text = element_text(size = 12),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12,angle=0,hjust=1),
+    axis.title = element_blank(),
+    strip.text = element_text(size = 12,face="bold")
+  ) +
+  scale_y_continuous(labels=scales::percent)+
+  scale_fill_manual(
+    values=mckolors$polychrome
+  )
+```
+PHATE, split.by spot size
+```{r}
+subset(
+  scco.seu,
+  cells = sample(Cells(scco.seu)[scco.seu$time_int%in%c(4)])
+) %>% DimPlot(
+  # scco.seu,
+  reduction="phate_harmony_sp",
+  split.by="pattern",
+  group.by = "cell_types",
+  # cells = Cells(scco.seu)[scco.seu$timepoint=='D4'],
+  cols = mckolors$polychrome,
+  raster=F
+) +
+  # facet_grid(
+  #   rows=vars(timepoint),
+  #   cols=vars(pattern)
+  # )+
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",legend.justification = 'center',
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = 12,face="bold")
+  )+
+  coord_fixed()
+```
+PHATE, split.by timepoint
+```{r}
+subset(
+  scco.seu,
+  cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"])
+) %>% DimPlot(
+  # scco.seu,
+  reduction="phate_harmony_sp",
+  split.by="timepoint",
+  # cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"]),
+  group.by = "cell_types",
+  cols = mckolors$polychrome,
+  raster=F
+) +
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",legend.justification = 'center',
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = 12,face="bold")
+  )+
+  coord_fixed()
+
+```
+
+
+```{r}
+# PHATE, split.by spot size & timepoint
+
+DimPlot(
+  scco.seu,
+  reduction="phate_harmony_sp",
+  # split.by=c("pattern","timepoint"),
+  group.by = "cell_types",
+  ncol = 4,
+  # order = sample(Cells(scco.seu)),
+  cols = mckolors$polychrome,
+  raster=F
+) +
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 12),
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = 12,face="bold")
+  )+
+  coord_fixed()
+
+```

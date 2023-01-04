@@ -1,13 +1,3 @@
----
-title: "cellchat_v1"
-author: "DWM"
-date: "10/28/2021"
-output: pdf_document
----
-
-```{r setup, include=FALSE}
-# knitr::opts_chunk$set(echo = TRUE)
-```
 
 # Load libs
 ```{r message=FALSE, warning=FALSE}
@@ -42,58 +32,44 @@ meta
 
 # Load dataset
 ```{r}
-# Convert AnnData to Seurat (.h5ad -> .h5seurat)
-## https://mojaveazure.github.io/seurat-disk/articles/convert-anndata.html
-if(!file.exist("/workdir/dwm269/scCardiacOrganoid/robjs/ma_ipsc_v2.RData")){
-tmp.file = "/workdir/dwm269/scCardiacOrganoid/pyobjs/ma_iPSC_v2"
-if(!file.exists(paste0(tmp.file,".h5seurat"))){
-  Convert(
-    source=paste0(tmp.file,".h5ad"),
-    assay = "RNA",
-    dest = "h5seurat", 
-    overwrite = TRUE
-  )
-}
-
-# Load in Seurat object
-ipsc.seu <- LoadH5Seurat(
-  file = paste0(tmp.file,".h5seurat"),
-  assays=c("RNA")
-)
-
-ipsc.seu$leiden_harmony_types <- factor(
-  ipsc.seu$leiden_harmony_types,
-  levels=c(
-    "iPSCs", 
-    "Primitive Streak",
-    "Definitive Endoderm",
-    "Gut Mesenchyme",
-    "Foregut Epithelium",
-    "Liver Progenitors",
-    "Cardiac Mesoderm",
-    "Fibroblasts",
-    "Smooth Muscle",
-    "Endocardial",
-    "Epicardial",
-    "Cardiomyocytes (early)",
-    "Cardiomyocytes (late)",
-    "Extraembryonic Mesoderm"          
-  )
-)
+if(!file.exists("/workdir/dwm269/scCardiacOrganoid/robjs/")){
+  system("Rscript scripts/r/convert_h5ad_to_seurat.R")
 }else(
-  load("/workdir/dwm269/scCardiacOrganoid/robjs/ma_ipsc_v2.RData")
+  load("/workdir/dwm269/scCardiacOrganoid/robjs/scCO_v7-1.RData")
 )
-head(ipsc.seu)
+
+# scco.seu$leiden_harmony_types <- factor(
+#   scco.seu$leiden_harmony_types,
+#   levels=c(
+#     "iPSCs", 
+#     "Primitive Streak",
+#     "Definitive Endoderm",
+#     "Gut Mesenchyme",
+#     "Foregut Epithelium",
+#     "Liver Progenitors",
+#     "Cardiac Mesoderm",
+#     "Fibroblasts",
+#     "Smooth Muscle",
+#     "Endocardial",
+#     "Epicardial",
+#     "Cardiomyocytes (early)",
+#     "Cardiomyocytes (late)",
+#     "Extraembryonic Mesoderm"          
+#   )
+# )
+
+head(scco.seu)
 ```
 # Plot to see that it loaded properly...
 ```{r}
 DimPlot(
-  ipsc.seu,
-  group.by="leiden_harmony_types",
-  reduction="phate_harmony"
+  scco.seu,
+  group.by="leiden_harmony_sp_anno",
+  reduction="phate_harmony_sp"
   # cols = 
 )+
-  scTheme$umap
+  scTheme$umap+
+  coord_fixed()
 ```
 
 # CellChat Analysis
@@ -103,15 +79,15 @@ showDatabaseCategory(CellChatDB)
 ```
 
 ```{r}
-ipsc.cellchat <- createCellChat(
+scco.chat <- createCellChat(
   object = GetAssayData(
-    ipsc.seu,
-    assay = "RNA",
+    scco.seu,
+    # assay = "RNA",
     slot = "data"
   ),
   meta = data.frame(
-    leiden_harmony_types = as.factor(ipsc.seu$leiden_harmony_types),
-    row.names = Cells(ipsc.seu)
+    leiden_harmony_types = as.factor(scco.seu$cell_types),
+    row.names = Cells(scco.seu)
   ),
   group.by = "leiden_harmony_types"
 )
@@ -120,17 +96,17 @@ ipsc.cellchat <- createCellChat(
 
 ```{r}
 # Set the database to use (whole CellChat database)
-ipsc.cellchat@DB <- CellChatDB.human
+scco.chat@DB <- CellChatDB.human
 
 # subset the expression data of signaling genes for saving computation cost
-ipsc.cellchat <- subsetData(
-  ipsc.cellchat
-  # features = Features(ipsc.seu)[!Features(ipsc.seu) %in% c("H2-Q8", "H2-T9", "H2-T18", "H2-Q9" ,"H2-L", "H2-BI" ,"H2-D" ,"H60a" ,"H2-Ea-ps")]
+scco.chat <- subsetData(
+  scco.chat
+  # features = Features(scco.seu)[!Features(scco.seu) %in% c("H2-Q8", "H2-T9", "H2-T18", "H2-Q9" ,"H2-L", "H2-BI" ,"H2-D" ,"H60a" ,"H2-Ea-ps")]
   )
 
 # CellChat processing (memory intensive for large datasets)
-ipsc.cellchat <- identifyOverExpressedGenes(ipsc.cellchat)
-ipsc.cellchat <- identifyOverExpressedInteractions(ipsc.cellchat)
+scco.chat <- identifyOverExpressedGenes(scco.chat)
+scco.chat <- identifyOverExpressedInteractions(scco.chat)
 gc()
 ```
 
@@ -139,37 +115,37 @@ gc()
 # options(future.globals.maxSize = 1000 * 1024^2)
 
 # project gene expression data onto PPI network (optional)
-ipsc.cellchat <- projectData(ipsc.cellchat, PPI.mouse)
+scco.chat <- projectData(scco.chat, PPI.human)
 
-# ipsc.cellchat@idents = droplevels(ipsc.cellchat@idents, exclude = setdiff(levels(meta$labels),unique(meta$labels)))
+# scco.chat@idents = droplevels(scco.chat@idents, exclude = setdiff(levels(meta$labels),unique(meta$labels)))
 
 
-ipsc.cellchat <- computeCommunProb(ipsc.cellchat)
+scco.chat <- computeCommunProb(scco.chat)
 
 # Filter out the cell-cell communication if there are only few number of cells in certain cell groups
-ipsc.cellchat <- filterCommunication(ipsc.cellchat, min.cells = 10)
+scco.chat <- filterCommunication(scco.chat, min.cells = 10)
 
-ipsc.cellchat <- computeCommunProbPathway(ipsc.cellchat)
+scco.chat <- computeCommunProbPathway(scco.chat)
 
-ipsc.cellchat <- aggregateNet(ipsc.cellchat)
+scco.chat <- aggregateNet(scco.chat)
 
 # Compute the network centrality scores
-ipsc.cellchat <- netAnalysis_computeCentrality(
-  ipsc.cellchat, 
+scco.chat <- netAnalysis_computeCentrality(
+  scco.chat, 
   slot.name = "netP"
 ) # the slot 'netP' means the inferred intercellular communication network of signaling pathways
 
-save(ipsc.cellchat,file="/workdir/dwm269/scCardiacOrganoid/robjs/ipsc_cellchat_v1.RData")
+save(scco.chat,file="/workdir/dwm269/scCardiacOrganoid/robjs/scCO_cellchat_v1.RData")
 plan("sequential") # clears memory usage from future parallelization
 gc()
 ```
 
 ## Global plotting
 ```{r}
-groupSize <- as.numeric(table(ipsc.cellchat@idents))
+groupSize <- as.numeric(table(scco.chat@idents))
 par(mfrow = c(1,2), xpd=TRUE)
 netVisual_circle(
-  ipsc.cellchat@net$count, 
+  scco.chat@net$count, 
   vertex.weight = groupSize, 
   weight.scale = T,
   label.edge= F, 
@@ -177,7 +153,7 @@ netVisual_circle(
   )
 
 netVisual_circle(
-  ipsc.cellchat@net$weight, 
+  scco.chat@net$weight, 
   vertex.weight = groupSize, 
   weight.scale = T, 
   label.edge= F, 
@@ -190,7 +166,7 @@ netVisual_circle(
 # Heatmap
 par(mfrow = c(1,1), xpd=TRUE)
 netVisual_heatmap(
-  ipsc.cellchat,
+  scco.chat,
   slot.name="netP",
   measure="weight",
   # color.use = celltype.colors[sort(c(sources.use,targets.use))],
@@ -228,7 +204,7 @@ targets.use = c(
 
 # par(mfrow = c(1,1), xpd=TRUE)
 # netVisual_chord_gene(
-#   ipsc.cellchat, 
+#   scco.chat, 
 #   sources.use = sources.use,
 #   targets.use = targets.use,
 #   slot.name = "netP",
@@ -249,7 +225,7 @@ targets.use = c(
 
 ```{r}
 netVisual_bubble(
-  ipsc.cellchat, 
+  scco.chat, 
   sources.use = sources.use, 
   targets.use = targets.use,
   thresh = 10^-150,
@@ -280,7 +256,7 @@ targets.use = c(
 
 par(mfrow = c(1,1), xpd=TRUE)
 netVisual_chord_gene(
-  ipsc.cellchat, 
+  scco.chat, 
   sources.use = sources.use,
   targets.use = targets.use,
   slot.name = "netP",
@@ -319,7 +295,7 @@ targets.use = c(
   # "Liver Progenitors"
 )
 netVisual_bubble(
-  ipsc.cellchat,
+  scco.chat,
   sources.use = sources.use, 
   targets.use = targets.use,
   thresh = 10^-150,
@@ -337,7 +313,7 @@ netVisual_bubble(
 ```{r}
 # https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tutorial/Comparison_analysis_of_multiple_datasets.html
 seu.list <- SplitObject(
-  ipsc.seu,
+  scco.seu,
   split.by = "sample"
 )
 ```
@@ -373,7 +349,7 @@ cellchat.list <- lapply(
     
     
     # project gene expression data onto PPI network (optional)
-    tmp.cellchat <- projectData(tmp.cellchat, PPI.mouse)
+    tmp.cellchat <- projectData(tmp.cellchat, PPI.human)
     
     # tmp.cellchat@idents = droplevels(tmp.cellchat@idents, exclude = setdiff(levels(meta$labels),unique(meta$labels)))
     
@@ -411,6 +387,9 @@ merged.cellchat <- mergeCellChat(
   add.names = meta$sample[meta$patterm=="600um"]
 )
 ```
+
+
+
 ```{r}
 
 ```
