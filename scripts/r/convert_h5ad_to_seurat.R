@@ -14,7 +14,7 @@ scco.seu <- adata2seu(
   meta.data = "obs",
   reductions = "obsm",
   graphs = NULL,#"obsp",
-  save.rdata = "data/robjs/scCO_v7-1.RData",
+  save.rdata = "data/robjs/scCO_v7-1.rds",
   verbose=T
 )
 
@@ -61,7 +61,6 @@ if(FALSE){ #switch for this code block...
 }
 # anndata -> SingleCellExperiment -> Seurat ----
 # https://theislab.github.io/zellkonverter/reference/index.html
-
-
-
-#
+if(FALSE){
+  #TODO, but also probably not because this would just further the portability issues of single-cell data between R and python.
+}
