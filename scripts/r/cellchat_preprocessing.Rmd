@@ -1,0 +1,204 @@
+
+# Load libs
+```{r message=FALSE, warning=FALSE}
+library(Matrix, quietly = T)
+library(dplyr, quietly = T)
+library(Seurat, quietly = T)
+library(SeuratDisk, quietly = T)
+
+library(CellChat, quietly = T)
+library(future, quietly = T)
+library(cluster, quietly = T)
+library(parallel, quietly = T)
+
+library(ggplot2, quietly = T)
+library(patchwork, quietly = T)
+library(pals, quietly = T)
+library(viridis, quietly = T)
+library(data.table, quietly = T)
+library(shades, quietly = T)
+
+source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seutils.R")
+source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seuplots.R")
+source("/home/dwm269/DWM_utils/plotting_utils/scThemes.R")
+# scTheme <- scThemes()
+```
+
+```{r}
+meta <- read.csv("/workdir/dwm269/scCardiacOrganoid/resources/metadata.csv")
+meta
+```
+
+
+# Load dataset
+```{r}
+rdata.path <- "/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-1.rds"
+if(!file.exists(rdata.path)){
+  system("Rscript scripts/r/convert_h5ad_to_seurat.R") # run R script to convert anndata to seurat
+}else(
+  scco.seu <- readRDS(rdata.path)
+)
+
+# scco.seu$leiden_harmony_types <- factor(
+#   scco.seu$leiden_harmony_types,
+#   levels=c(
+#     "iPSCs", 
+#     "Primitive Streak",
+#     "Definitive Endoderm",
+#     "Gut Mesenchyme",
+#     "Foregut Epithelium",
+#     "Liver Progenitors",
+#     "Cardiac Mesoderm",
+#     "Fibroblasts",
+#     "Smooth Muscle",
+#     "Endocardial",
+#     "Epicardial",
+#     "Cardiomyocytes (early)",
+#     "Cardiomyocytes (late)",
+#     "Extraembryonic Mesoderm"          
+#   )
+# )
+
+head(scco.seu)
+```
+# Plot to see that it loaded properly...
+```{r}
+DimPlot(
+  scco.seu,
+  group.by="leiden_harmony_sp_anno",
+  reduction="phate_harmony_sp"
+  # cols = 
+)+
+  # scTheme$umap+
+  coord_fixed()
+```
+
+Split the object into each individual sample for CellChat analysis
+```{r}
+scco.seu.list <- SplitObject(
+  scco.seu,
+  split.by = "sample"
+)
+```
+
+
+# CellChat Analysis
+Link to the vignette this analysis is based on:
+https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tutorial/Comparison_analysis_of_multiple_datasets_with_different_cellular_compositions.html
+```{r}
+CellChatDB <- CellChatDB.human
+showDatabaseCategory(CellChatDB)
+```
+Initialize CellChat objects
+```{r}
+scco.chat.list <- lapply(
+  scco.seu.list,
+  FUN = function (SEU) createCellChat(
+    object = GetAssayData(
+      SEU,
+      # assay = "RNA",
+      slot = "data"
+    ),
+    meta = data.frame(
+      cell_types = SEU$cell_types,
+      row.names = Cells(SEU)
+    ),
+    group.by = "cell_types"
+  )
+)
+```
+
+Run CellChat on each object, individually
+```{r}
+#TODO: parallelize w/ mclapply
+scco.chat.list <- lapply(
+  scco.chat.list,
+  FUN = function(CHAT){
+    # Set the database to use (whole CellChat database)
+    CHAT@DB <- CellChatDB.human
+    
+    # subset the expression data of signaling genes for saving computation cost
+    CHAT <- subsetData(
+      CHAT
+      # features = Features(scco.seu)[
+      #   !Features(scco.seu) %in% c("H2-Q8", "H2-T9", "H2-T18", "H2-Q9" ,"H2-L", "H2-BI" ,"H2-D" ,"H60a" ,"H2-Ea-ps")
+      # ]
+    )
+    
+    # CellChat processing (memory intensive for large datasets)
+    CHAT <- identifyOverExpressedGenes(CHAT)
+    CHAT <- identifyOverExpressedInteractions(CHAT)
+    
+    return(CHAT)
+  }
+)
+
+gc()
+```
+
+```{r}
+# future::plan("multiprocess", workers = 20)
+# options(future.globals.maxSize = 1000 * 1024^2)
+
+scco.chat.list <- lapply(
+  scco.chat.list,
+  FUN = function(CHAT){
+    # project gene expression data onto PPI network (optional)
+    CHAT <- projectData(CHAT, PPI.human)
+    
+    CHAT@idents = droplevels(
+      CHAT@idents, 
+      exclude = setdiff(levels(meta$labels),unique(meta$labels))
+    )
+    
+    CHAT <- computeCommunProb(CHAT)
+    
+    # Filter out the cell-cell communication if there are only few number of cells in certain cell groups
+    CHAT <- filterCommunication(CHAT, min.cells = 10)
+    
+    CHAT <- computeCommunProbPathway(CHAT)
+    
+    CHAT <- aggregateNet(CHAT)
+    
+    # Compute the network centrality scores
+    CHAT <- netAnalysis_computeCentrality(
+      CHAT, 
+      slot.name = "netP"
+    ) # the slot 'netP' means the inferred intercellular communication network of signaling pathways
+    
+  }
+)
+
+plan("sequential") # clears memory usage from future parallelization
+gc()
+```
+
+Update cell idents prior to integration
+```{r}
+scco.chat.list <- lapply(
+  scco.chat.list,
+  FUN = function(CHAT, celltypes=levels(scco.seu$cell_types)) liftCellChat(CHAT, celltypes)
+)
+```
+
+Merge preprocessed CellChat obects
+```{r}
+scco.chat <- mergeCellChat(
+  scco.chat.list,
+  add.names = meta$sample[meta$sample %in% unique(scco.seu$sample)],
+  cell.prefix = TRUE
+)
+```
+Save CellChat object
+```{r}
+save(
+  scco.chat,
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-1_cellchat.RData"
+)
+```
+
+
+```{r}
+sessionInfo()
+```
+

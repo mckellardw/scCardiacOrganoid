@@ -25,119 +25,16 @@ source("/home/dwm269/DWM_utils/plotting_utils/scThemes.R")
 ```
 
 ```{r}
-meta <- read.csv("/workdir/dwm269/scCardiacOrganoid/resources/metadata_v1.csv")
+meta <- read.csv("/workdir/dwm269/scCardiacOrganoid/resources/metadata.csv")
+meta <- meta[meta$include,]
 meta
 ```
 
-
-# Load dataset
+Load CellChat object
 ```{r}
-if(!file.exists("/workdir/dwm269/scCardiacOrganoid/robjs/")){
-  system("Rscript scripts/r/convert_h5ad_to_seurat.R")
-}else(
-  load("/workdir/dwm269/scCardiacOrganoid/robjs/scCO_v7-1.RData")
+load(
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-1_cellchat.RData"
 )
-
-# scco.seu$leiden_harmony_types <- factor(
-#   scco.seu$leiden_harmony_types,
-#   levels=c(
-#     "iPSCs", 
-#     "Primitive Streak",
-#     "Definitive Endoderm",
-#     "Gut Mesenchyme",
-#     "Foregut Epithelium",
-#     "Liver Progenitors",
-#     "Cardiac Mesoderm",
-#     "Fibroblasts",
-#     "Smooth Muscle",
-#     "Endocardial",
-#     "Epicardial",
-#     "Cardiomyocytes (early)",
-#     "Cardiomyocytes (late)",
-#     "Extraembryonic Mesoderm"          
-#   )
-# )
-
-head(scco.seu)
-```
-# Plot to see that it loaded properly...
-```{r}
-DimPlot(
-  scco.seu,
-  group.by="leiden_harmony_sp_anno",
-  reduction="phate_harmony_sp"
-  # cols = 
-)+
-  scTheme$umap+
-  coord_fixed()
-```
-
-# CellChat Analysis
-```{r}
-CellChatDB <- CellChatDB.human
-showDatabaseCategory(CellChatDB)
-```
-
-```{r}
-scco.chat <- createCellChat(
-  object = GetAssayData(
-    scco.seu,
-    # assay = "RNA",
-    slot = "data"
-  ),
-  meta = data.frame(
-    leiden_harmony_types = as.factor(scco.seu$cell_types),
-    row.names = Cells(scco.seu)
-  ),
-  group.by = "leiden_harmony_types"
-)
-
-```
-
-```{r}
-# Set the database to use (whole CellChat database)
-scco.chat@DB <- CellChatDB.human
-
-# subset the expression data of signaling genes for saving computation cost
-scco.chat <- subsetData(
-  scco.chat
-  # features = Features(scco.seu)[!Features(scco.seu) %in% c("H2-Q8", "H2-T9", "H2-T18", "H2-Q9" ,"H2-L", "H2-BI" ,"H2-D" ,"H60a" ,"H2-Ea-ps")]
-  )
-
-# CellChat processing (memory intensive for large datasets)
-scco.chat <- identifyOverExpressedGenes(scco.chat)
-scco.chat <- identifyOverExpressedInteractions(scco.chat)
-gc()
-```
-
-```{r}
-# future::plan("multiprocess", workers = 20)
-# options(future.globals.maxSize = 1000 * 1024^2)
-
-# project gene expression data onto PPI network (optional)
-scco.chat <- projectData(scco.chat, PPI.human)
-
-# scco.chat@idents = droplevels(scco.chat@idents, exclude = setdiff(levels(meta$labels),unique(meta$labels)))
-
-
-scco.chat <- computeCommunProb(scco.chat)
-
-# Filter out the cell-cell communication if there are only few number of cells in certain cell groups
-scco.chat <- filterCommunication(scco.chat, min.cells = 10)
-
-scco.chat <- computeCommunProbPathway(scco.chat)
-
-scco.chat <- aggregateNet(scco.chat)
-
-# Compute the network centrality scores
-scco.chat <- netAnalysis_computeCentrality(
-  scco.chat, 
-  slot.name = "netP"
-) # the slot 'netP' means the inferred intercellular communication network of signaling pathways
-
-save(scco.chat,file="/workdir/dwm269/scCardiacOrganoid/robjs/scCO_cellchat_v1.RData")
-plan("sequential") # clears memory usage from future parallelization
-gc()
 ```
 
 ## Global plotting
@@ -173,11 +70,11 @@ netVisual_heatmap(
   # sources.use = sources.use,
   # targets.use = targets.use,
   # cluster.rows=T, cluster.cols=T,
-  color.heatmap = "YlOrRd",
+  # color.heatmap = "YlOrRd",
   font.size.title = 16,
   font.size = 14,
   width=6,
-  height=6
+  height=22
 )
 ```
 
@@ -187,19 +84,19 @@ netVisual_heatmap(
 ```{r}
 
 sources.use = c(
-  "Definitive Endoderm",
-  "Gut Mesenchyme",
-  "Foregut Epithelium"
+  "Definitive_Endoderm",
+  # "Gut Mesenchyme",
+  "Foregut_Epithelium"
   # "Liver Progenitors"
 )
 targets.use = c(
-  "Cardiac Mesoderm",
+  "Cardiac_Mesoderm",
   "Fibroblasts",
-  "Smooth Muscle",
+  "Smooth_Muscle",
   "Endocardial",
   "Epicardial",
-  "Cardiomyocytes (early)",
-  "Cardiomyocytes (late)"
+  # "Cardiomyocytes (early)",
+  "Cardiomyocytes"
 )
 
 # par(mfrow = c(1,1), xpd=TRUE)
@@ -228,7 +125,7 @@ netVisual_bubble(
   scco.chat, 
   sources.use = sources.use, 
   targets.use = targets.use,
-  thresh = 10^-150,
+  # thresh = 10^-150,
   # max.dataset = 15,
   min.quantile = c(0.5),
   signaling = c("FN1","MK","CDH","LAMININ","PARs"),
@@ -393,10 +290,3 @@ merged.cellchat <- mergeCellChat(
 ```{r}
 
 ```
-
-
-
-```{r}
-session.info()
-```
-
