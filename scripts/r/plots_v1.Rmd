@@ -73,11 +73,9 @@ Order cell types...
 scco.seu$cell_types <- factor(
   scco.seu$cell_types,
   levels=c(
-    "iPSCs","Primitive_Streak",
-    "Definitive_Endoderm","Cardiac_Mesoderm",
-    "Fibroblasts","Smooth_Muscle","Endocardial","Epicardial",
-    "Foregut_Epithelium",
-    "Cardiomyocytes",
+    "iPSCs","Primitive_Streak", 
+    "Definitive_Endoderm", "Foregut_Epithelium", # Endoderm
+    "Cardiac_Mesoderm","Fibroblasts","Smooth_Muscle","Endocardial","Epicardial","Cardiomyocytes", # Mesoderm/cardiac
     "Extraembryonic_Mesoderm"
   )
 )
@@ -180,7 +178,7 @@ subset(
   split.by="timepoint",
   # cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"]),
   group.by = "cell_types",
-  cols = mckolors$polychrome,
+  cols = alpha(mckolors$polychrome, 0.7),
   raster=F
 ) +
   scTheme$umap +
@@ -208,7 +206,7 @@ DimPlot(
   group.by = "cell_types",
   ncol = 4,
   # order = sample(Cells(scco.seu)),
-  cols = mckolors$polychrome,
+  cols = alpha(mckolors$polychrome, 0.7),
   raster=F
 ) +
   scTheme$umap +

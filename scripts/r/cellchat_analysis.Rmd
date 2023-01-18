@@ -37,7 +37,38 @@ load(
 )
 ```
 
-## Global plotting
+
+# Link to CellChat vignette from Suoqin Jin:
+https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tutorial/Comparison_analysis_of_multiple_datasets_with_different_cellular_compositions.html
+
+```{r}
+# Hierarchy plot
+pathways.show <- c("FGF") 
+weight.max <- getMaxWeight( # control the edge weights across different datasets
+  scco.chat.list,
+  slot.name = c("netP"), 
+  attribute = pathways.show
+) 
+vertex.receiver = seq(1,10) # Left portion of hierarchy plot the shows signaling to dermal cells and right portion shows signaling to epidermal cells
+par(
+  mfrow = c(1,2), 
+  xpd=TRUE
+)
+
+for (i in 1:length(scco.chat.list)) {
+  netVisual_aggregate(
+    scco.chat.list[[i]], 
+    signaling = pathways.show, 
+    vertex.receiver = vertex.receiver, 
+    edge.weight.max = weight.max[1], 
+    edge.width.max = 10, 
+    signaling.name = paste(pathways.show, names(scco.chat.list)[i])
+  )
+}
+```
+
+
+# Global plotting
 ```{r}
 groupSize <- as.numeric(table(scco.chat@idents))
 par(mfrow = c(1,2), xpd=TRUE)
@@ -60,7 +91,6 @@ netVisual_circle(
 
 
 ```{r}
-# Heatmap
 par(mfrow = c(1,1), xpd=TRUE)
 netVisual_heatmap(
   scco.chat,
@@ -79,7 +109,7 @@ netVisual_heatmap(
 ```
 
 
-## Focused plotting
+# Focused plotting
 ### Chord plot: endo -> meso
 ```{r}
 
@@ -203,87 +233,6 @@ netVisual_bubble(
 )
 ```
 
-
-##########################
-#  Time-series analysis  #
-##########################
-```{r}
-# https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tutorial/Comparison_analysis_of_multiple_datasets.html
-seu.list <- SplitObject(
-  scco.seu,
-  split.by = "sample"
-)
-```
-
-Run CellChat on each sample individually
-```{r}
-cellchat.list <- lapply(
-  seu.list,
-  FUN = function(SEU){
-    tmp.cellchat <- createCellChat(
-      object = GetAssayData(
-        SEU,
-        assay = "RNA",
-        slot = "data"
-      ),
-      meta = data.frame(
-        leiden_harmony_types = droplevels(SEU$leiden_harmony_types),
-        row.names = Cells(SEU)
-      ),
-      group.by = "leiden_harmony_types"
-    )
-    print("Made tmp CellChat object...")
-    # Set the database to use (whole CellChat database)
-    tmp.cellchat@DB <- CellChatDB.human
-    
-    # subset the expression data of signaling genes for saving computation cost
-    tmp.cellchat <- subsetData(tmp.cellchat)
-    
-    # CellChat processing (memory intensive for large datasets)
-    tmp.cellchat <- identifyOverExpressedGenes(tmp.cellchat)
-    tmp.cellchat <- identifyOverExpressedInteractions(tmp.cellchat)
-    gc()
-    
-    
-    # project gene expression data onto PPI network (optional)
-    tmp.cellchat <- projectData(tmp.cellchat, PPI.human)
-    
-    # tmp.cellchat@idents = droplevels(tmp.cellchat@idents, exclude = setdiff(levels(meta$labels),unique(meta$labels)))
-    
-    
-    tmp.cellchat <- computeCommunProb(tmp.cellchat)
-    
-    # Filter out the cell-cell communication if there are only few number of cells in certain cell groups
-    tmp.cellchat <- filterCommunication(tmp.cellchat, min.cells = 10)
-    
-    tmp.cellchat <- computeCommunProbPathway(tmp.cellchat)
-    
-    tmp.cellchat <- aggregateNet(tmp.cellchat)
-    
-    # Compute the network centrality scores
-    tmp.cellchat <- netAnalysis_computeCentrality(
-      tmp.cellchat, 
-      slot.name = "netP"
-    ) # the slot 'netP' means the inferred intercellular communication network of signaling pathways
-    
-    return(tmp.cellchat)
-  }
-)
-
-
-```
-
-```{r}
-save(cellchat.list, file="/workdir/dwm269/scCardiacOrganoid/robjs/cellchat_list_v1.RData")
-```
-
-# Comparative analysis on the 600um samples
-```{r}
-merged.cellchat <- mergeCellChat(
-  cellchat.list[meta$patterm=="600um"], 
-  add.names = meta$sample[meta$patterm=="600um"]
-)
-```
 
 
 
