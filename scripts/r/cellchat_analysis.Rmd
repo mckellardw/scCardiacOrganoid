@@ -30,28 +30,51 @@ meta <- meta[meta$include,]
 meta
 ```
 
-Load CellChat object
+Load CellChat object(s)
 ```{r}
 load(
-  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-1_cellchat.RData"
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-2_cellchat_list.RData"
 )
 ```
 
+```{r}
+getPathways <- function(
+  chat.list,
+  combo = c("intersection","union")
+  # slot="netP" #TODO
+){
+  path.list <- lapply(
+    chat.list,
+    FUN = function(CHAT) CHAT@netP$pathways
+  )
+  
+  if(combo[1]=="intersection"){
+    return(
+      sort(Reduce(intersect, path.list))
+    )
+  }else if(combo[1]=="union"){
+    return(
+      sort(unique(unlist(path.list)))
+    )
+  }
+}
+```
 
 # Link to CellChat vignette from Suoqin Jin:
 https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tutorial/Comparison_analysis_of_multiple_datasets_with_different_cellular_compositions.html
 
-```{r}
+```{r fig.height=20, fig.width=20}
 # Hierarchy plot
-pathways.show <- c("FGF") 
+pathways.show <- c("BMP") 
 weight.max <- getMaxWeight( # control the edge weights across different datasets
   scco.chat.list,
-  slot.name = c("netP"), 
+  slot.name = c("netP"),
   attribute = pathways.show
 ) 
-vertex.receiver = seq(1,10) # Left portion of hierarchy plot the shows signaling to dermal cells and right portion shows signaling to epidermal cells
+# vertex.receiver = seq(1,10) 
 par(
-  mfrow = c(1,2), 
+  mfrow = c(3,4), 
+  mai = c(0.1,0.1,0.3,0.1),
   xpd=TRUE
 )
 
@@ -59,10 +82,15 @@ for (i in 1:length(scco.chat.list)) {
   netVisual_aggregate(
     scco.chat.list[[i]], 
     signaling = pathways.show, 
-    vertex.receiver = vertex.receiver, 
+    thresh = 0.2,
+    # layout = "chord",
+    # vertex.receiver = vertex.receiver, 
     edge.weight.max = weight.max[1], 
-    edge.width.max = 10, 
-    signaling.name = paste(pathways.show, names(scco.chat.list)[i])
+    edge.width.max = 10,
+    big.gap = 0.1,small.gap=0,
+    title.space = 0,pt.title=10,
+    point.size=6,
+    signaling.name = paste(pathways.show, names(scco.chat.list)[i],sep = "-")
   )
 }
 ```

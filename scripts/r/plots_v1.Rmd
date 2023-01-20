@@ -1,6 +1,9 @@
 
 # Session set-up
 ## Libs, setwd
+```{r setup}
+knitr::opts_knit$set(root.dir = '/workdir/dwm269/scCardiacOrganoid/')
+```
 ```{r message=FALSE, warning=FALSE}
 # analysis
 library(Matrix, quietly = T)
@@ -22,7 +25,6 @@ library(shades, quietly = T)
 source("~/DWM_utils/sc_utils/seurat_helpers/seutils.R")
 source("~/DWM_utils/sc_utils/seurat_helpers/seuplots.R")
 
-setwd("/workdir/dwm269/scCardiacOrganoid/")
 ```
 
 ## Figure settings
@@ -55,17 +57,17 @@ mckolors <- read.csv("~/DWM_utils/plotting_utils/McKolors_v1.csv") %>%
   lapply(
     FUN=function(X) X[X!=""]
   )
-names(mckolors)
 ```
 ## Load data
 ```{r}
-if(is.null(scco.seu)){
-  load("data/robjs/scCO_v7-1.RData")
+if(!exists("scco.seu")){
+  scco.seu <- readRDS("data/robjs/scCO_v7-2.rds")
 }
+
 scco.seu$sample<-factor(
   scco.seu$sample,
   levels=sort(unique(scco.seu$sample))
-  )
+)
 ```
 
 Order cell types...
@@ -74,7 +76,7 @@ scco.seu$cell_types <- factor(
   scco.seu$cell_types,
   levels=c(
     "iPSCs","Primitive_Streak", 
-    "Definitive_Endoderm", "Foregut_Epithelium", # Endoderm
+    "Definitive_Endoderm", "Foregut_Epithelium", "Liver_Progenitors",# Endoderm
     "Cardiac_Mesoderm","Fibroblasts","Smooth_Muscle","Endocardial","Epicardial","Cardiomyocytes", # Mesoderm/cardiac
     "Extraembryonic_Mesoderm"
   )
@@ -109,7 +111,7 @@ ggplot(
 
 # Cell type plots
 ## Cell types across differentiation
-```{r}
+```{r fig.height=12, fig.width=6}
 ggplot(
   scco.seu@meta.data,
   aes(
@@ -134,7 +136,7 @@ ggplot(
   ) +
   scale_y_continuous(labels=scales::percent)+
   scale_fill_manual(
-    values=mckolors$polychrome
+    values=mckolors$polychrome[3:16]
   )
 ```
 PHATE, split.by spot size
@@ -148,7 +150,7 @@ subset(
   split.by="pattern",
   group.by = "cell_types",
   # cells = Cells(scco.seu)[scco.seu$timepoint=='D4'],
-  cols = mckolors$polychrome,
+  cols = mckolors$polychrome[3:32],
   raster=F
 ) +
   # facet_grid(
@@ -195,18 +197,16 @@ subset(
 
 ```
 
-
+PHATE, split.by spot size & timepoint
 ```{r}
-# PHATE, split.by spot size & timepoint
-
 DimPlot(
   scco.seu,
   reduction="phate_harmony_sp",
   # split.by=c("pattern","timepoint"),
   group.by = "cell_types",
-  ncol = 4,
+  # ncol = 4,
   # order = sample(Cells(scco.seu)),
-  cols = alpha(mckolors$polychrome, 0.7),
+  cols = alpha(mckolors$polychrome[3:32], 0.1),
   raster=F
 ) +
   scTheme$umap +

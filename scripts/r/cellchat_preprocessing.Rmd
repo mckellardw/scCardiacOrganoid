@@ -32,7 +32,7 @@ meta
 
 # Load dataset
 ```{r}
-rdata.path <- "/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-1.rds"
+rdata.path <- "/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-2.rds"
 if(!file.exists(rdata.path)){
   system("Rscript scripts/r/convert_h5ad_to_seurat.R") # run R script to convert anndata to seurat
 }else(
@@ -180,7 +180,15 @@ scco.chat.list <- lapply(
   FUN = function(CHAT, celltypes=levels(scco.seu$cell_types)) liftCellChat(CHAT, celltypes)
 )
 ```
+Save CellChat list
+```{r}
+save(
+  scco.chat.list,
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-2_cellchat_list.RData"
+)
+```
 
+## Merge and
 Merge preprocessed CellChat obects
 ```{r}
 scco.chat <- mergeCellChat(
@@ -193,7 +201,7 @@ Save CellChat object
 ```{r}
 save(
   scco.chat,
-  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-1_cellchat.RData"
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-2_cellchat.RData"
 )
 ```
 
