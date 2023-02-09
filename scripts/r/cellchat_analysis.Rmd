@@ -4,7 +4,7 @@
 library(Matrix, quietly = T)
 library(dplyr, quietly = T)
 library(Seurat, quietly = T)
-library(SeuratDisk, quietly = T)
+# library(SeuratDisk, quietly = T)
 
 library(CellChat, quietly = T)
 library(future, quietly = T)
@@ -21,7 +21,12 @@ library(shades, quietly = T)
 source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seutils.R")
 source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seuplots.R")
 source("/home/dwm269/DWM_utils/plotting_utils/scThemes.R")
-# scTheme <- scThemes()
+scTheme <- scThemes()
+```
+
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "/workdir/dwm269/scCardiacOrganoid/")
 ```
 
 ```{r}
@@ -38,51 +43,46 @@ load(
 ```
 
 ```{r}
-getPathways <- function(
-  chat.list,
-  combo = c("intersection","union")
-  # slot="netP" #TODO
-){
-  path.list <- lapply(
-    chat.list,
-    FUN = function(CHAT) CHAT@netP$pathways
-  )
-  
-  if(combo[1]=="intersection"){
-    return(
-      sort(Reduce(intersect, path.list))
-    )
-  }else if(combo[1]=="union"){
-    return(
-      sort(unique(unlist(path.list)))
-    )
-  }
-}
+source("scripts/r/cellchat_helpers.R")
 ```
+
+# CellChat info...
+```{r}
+i <- seq(1,nrow(meta))[meta$pattern=="600um"] 
+i <- seq(1,nrow(meta))[meta$pattern=="600um" & meta$time_int>=4] 
+i <- 3:7
+
+getPathways(
+  scco.chat.list[i]
+)
+```
+
 
 # Link to CellChat vignette from Suoqin Jin:
 https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tutorial/Comparison_analysis_of_multiple_datasets_with_different_cellular_compositions.html
 
 ```{r fig.height=20, fig.width=20}
-# Hierarchy plot
-pathways.show <- c("BMP") 
+i <- seq(1,nrow(meta))[meta$pattern=="600um"] # subset to 600um samples only
+i <- seq(1,nrow(meta))[meta$pattern=="600um" & meta$time_int>=4] 
+
+pathways.show <- c("TGFb") 
 weight.max <- getMaxWeight( # control the edge weights across different datasets
-  scco.chat.list,
+  scco.chat.list[i],
   slot.name = c("netP"),
   attribute = pathways.show
 ) 
 # vertex.receiver = seq(1,10) 
 par(
-  mfrow = c(3,4), 
+  mfrow = c(2,4), 
   mai = c(0.1,0.1,0.3,0.1),
   xpd=TRUE
 )
 
-for (i in 1:length(scco.chat.list)) {
+for(j in i){
   netVisual_aggregate(
-    scco.chat.list[[i]], 
+    scco.chat.list[[j]], 
     signaling = pathways.show, 
-    thresh = 0.2,
+    thresh = 0,
     # layout = "chord",
     # vertex.receiver = vertex.receiver, 
     edge.weight.max = weight.max[1], 
@@ -90,11 +90,10 @@ for (i in 1:length(scco.chat.list)) {
     big.gap = 0.1,small.gap=0,
     title.space = 0,pt.title=10,
     point.size=6,
-    signaling.name = paste(pathways.show, names(scco.chat.list)[i],sep = "-")
+    signaling.name = paste(pathways.show, names(scco.chat.list)[j],sep = "-")
   )
 }
 ```
-
 
 # Global plotting
 ```{r}
