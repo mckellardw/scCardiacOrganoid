@@ -64,8 +64,9 @@ https://htmlpreview.github.io/?https://github.com/sqjin/CellChat/blob/master/tut
 ```{r fig.height=20, fig.width=20}
 i <- seq(1,nrow(meta))[meta$pattern=="600um"] # subset to 600um samples only
 i <- seq(1,nrow(meta))[meta$pattern=="600um" & meta$time_int>=4] 
+i <- seq(1,nrow(meta))[meta$time_int==4]
 
-pathways.show <- c("TGFb") 
+pathways.show <- c("ncWNT") 
 weight.max <- getMaxWeight( # control the edge weights across different datasets
   scco.chat.list[i],
   slot.name = c("netP"),
@@ -73,7 +74,8 @@ weight.max <- getMaxWeight( # control the edge weights across different datasets
 ) 
 # vertex.receiver = seq(1,10) 
 par(
-  mfrow = c(2,4), 
+  # mfrow = c(2,4), 
+  mfrow=c(1,3),
   mai = c(0.1,0.1,0.3,0.1),
   xpd=TRUE
 )
@@ -93,44 +95,68 @@ for(j in i){
     signaling.name = paste(pathways.show, names(scco.chat.list)[j],sep = "-")
   )
 }
+
+
 ```
 
 # Global plotting
 ```{r}
-groupSize <- as.numeric(table(scco.chat@idents))
-par(mfrow = c(1,2), xpd=TRUE)
-netVisual_circle(
-  scco.chat@net$count, 
-  vertex.weight = groupSize, 
-  weight.scale = T,
-  label.edge= F, 
-  title.name = "Number of interactions"
+# par(mfrow = c(5,5), xpd=TRUE)
+for(CHAT in scco.chat.list){
+  groupSize <- as.numeric(table(CHAT@idents))
+  # par(mfrow = c(1,1), xpd=TRUE)
+  # netVisual_circle(
+  #   CHAT@net$count, 
+  #   vertex.weight = groupSize, 
+  #   weight.scale = T,
+  #   label.edge= F, 
+  #   title.name = "Number of interactions"
+  # )
+  # 
+  # netVisual_circle(
+  #   CHAT@net$weight, 
+  #   vertex.weight = groupSize, 
+  #   weight.scale = T, e
+  #   label.edge= F, 
+  #   title.name = "Interaction weights/strength"
+  # )
+  netVisual_heatmap(
+    CHAT,
+    slot.name="netP",
+    measure="weight",
+    # color.use = celltype.colors[sort(c(sources.use,targets.use))],
+    # sources.use = sources.use,
+    # targets.use = targets.use,
+    # cluster.rows=T, cluster.cols=T,
+    # color.heatmap = "YlOrRd",
+    # font.size.title = 16,
+    # font.size = 14,
+    width=6,
+    height=6
   )
-
-netVisual_circle(
-  scco.chat@net$weight, 
-  vertex.weight = groupSize, 
-  weight.scale = T, 
-  label.edge= F, 
-  title.name = "Interaction weights/strength"
-  )
+}
 ```
 
 
 ```{r}
+types.use <- c(
+  "Cardiac_Mesoderm","Cardiomyocytes","Definitive_Endoderm",
+  "Endocardial","Epicardial","Extraembryonic_Mesoderm",
+  "Fibroblasts","Foregut_Epithelium","Liver_Progenitors","Smooth_Muscle"
+)
 par(mfrow = c(1,1), xpd=TRUE)
 netVisual_heatmap(
   scco.chat,
   slot.name="netP",
   measure="weight",
   # color.use = celltype.colors[sort(c(sources.use,targets.use))],
-  # sources.use = sources.use,
-  # targets.use = targets.use,
+  sources.use = types.use,
+  targets.use = types.use,
   # cluster.rows=T, cluster.cols=T,
   # color.heatmap = "YlOrRd",
   font.size.title = 16,
   font.size = 14,
-  width=6,
+  width=16,
   height=22
 )
 ```

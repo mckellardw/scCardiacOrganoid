@@ -7,14 +7,14 @@ setwd("/workdir/dwm269/scCardiacOrganoid/")
 source("~/DWM_utils/sc_utils/adata2seu.R")
 
 scco.seu <- adata2seu(
-  adata_path="data/pyobjs/scCO_v7-2.h5ad",
+  adata_path="data/pyobjs/scCO_v7-3.h5ad",
   counts = "counts",
   data = NULL,
   project = "scCardiacOrganoid",
   meta.data = "obs",
   reductions = "obsm",
   graphs = NULL,#"obsp",
-  save.rdata = "data/robjs/scCO_v7-2.rds",
+  save.rdata = "data/robjs/scCO_v7-3.rds",
   verbose=T
 )
 

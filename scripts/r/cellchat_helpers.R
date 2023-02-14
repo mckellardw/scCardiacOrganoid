@@ -1,3 +1,6 @@
+
+library("oompaBase")
+
 # Pull pathways out of a list of CellChat objects
 getPathways <- function(
     chat.list,

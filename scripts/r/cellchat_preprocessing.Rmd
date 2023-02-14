@@ -32,7 +32,7 @@ meta
 
 # Load dataset
 ```{r}
-rdata.path <- "/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-2.rds"
+rdata.path <- "/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-3.rds"
 if(!file.exists(rdata.path)){
   system("Rscript scripts/r/convert_h5ad_to_seurat.R") # run R script to convert anndata to seurat
 }else(
@@ -65,7 +65,7 @@ head(scco.seu)
 ```{r}
 DimPlot(
   scco.seu,
-  group.by="leiden_harmony_sp_anno",
+  group.by="cell_types_level2",
   reduction="phate_harmony_sp"
   # cols = 
 )+
