@@ -48,9 +48,9 @@ source("scripts/r/cellchat_helpers.R")
 
 # CellChat info...
 ```{r}
-i <- seq(1,nrow(meta))[meta$pattern=="600um"] 
+# i <- seq(1,nrow(meta))[meta$pattern=="600um"] 
 i <- seq(1,nrow(meta))[meta$pattern=="600um" & meta$time_int>=4] 
-i <- 3:7
+# i <- 3:7
 
 getPathways(
   scco.chat.list[i]
@@ -101,6 +101,9 @@ for(j in i){
 
 # Global plotting
 ```{r}
+sources.use = c("Endocardial", "Foregut_Epithelium")
+targets.use = c("Cardiomyocytes")
+
 # par(mfrow = c(5,5), xpd=TRUE)
 for(CHAT in scco.chat.list){
   groupSize <- as.numeric(table(CHAT@idents))
@@ -125,8 +128,8 @@ for(CHAT in scco.chat.list){
     slot.name="netP",
     measure="weight",
     # color.use = celltype.colors[sort(c(sources.use,targets.use))],
-    # sources.use = sources.use,
-    # targets.use = targets.use,
+    sources.use = sources.use,
+    targets.use = targets.use,
     # cluster.rows=T, cluster.cols=T,
     # color.heatmap = "YlOrRd",
     # font.size.title = 16,
@@ -140,9 +143,15 @@ for(CHAT in scco.chat.list){
 
 ```{r}
 types.use <- c(
-  "Cardiac_Mesoderm","Cardiomyocytes","Definitive_Endoderm",
-  "Endocardial","Epicardial","Extraembryonic_Mesoderm",
-  "Fibroblasts","Foregut_Epithelium","Liver_Progenitors","Smooth_Muscle"
+  "Cardiac_Mesoderm",
+  # "Cardiomyocytes",
+  # "Definitive_Endoderm",
+  "Endocardial",
+  # "Epicardial",
+  # "Extraembryonic_Mesoderm",
+  # "Fibroblasts",
+  "Foregut_Epithelium"
+  # "Liver_Progenitors","Smooth_Muscle"
 )
 par(mfrow = c(1,1), xpd=TRUE)
 netVisual_heatmap(
@@ -211,7 +220,7 @@ netVisual_bubble(
   # thresh = 10^-150,
   # max.dataset = 15,
   min.quantile = c(0.5),
-  signaling = c("FN1","MK","CDH","LAMININ","PARs"),
+  signaling = c("FN1","MK","CDH","LAMININ"),
   remove.isolate = FALSE
 )
 ```
@@ -233,6 +242,9 @@ targets.use = c(
   "Foregut Epithelium"
   # "Liver Progenitors"
 )
+
+sources.use = c("Endocardial", "Foregut Epithelium")
+targets.use = c("Cardiomyocytes")
 
 par(mfrow = c(1,1), xpd=TRUE)
 netVisual_chord_gene(

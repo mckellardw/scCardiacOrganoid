@@ -43,3 +43,62 @@ def reorder_reduction(
         ADATA.obsm[reduction] = ADATA.obsm[reduction][:,pc_order]
     else:
         print(f"The reduction '{reduction}' was not found...")
+
+
+
+# Read in a list of gene lists from .csv (each column is a gene list)
+## Useful for plotting
+def read_csv_to_dict(filename):
+    import csv
+
+    # Open the CSV file
+    with open(filename, 'r') as file:
+
+        # Create a CSV reader object
+        reader = csv.reader(file)
+
+        # Read the first row as header
+        header = next(reader)
+
+        # Create an empty dictionary to store the columns
+        columns = {col: [] for col in header}
+
+        # Loop through each row in the CSV file
+        for row in reader:
+
+            # Loop through each column in the row
+            for col, value in zip(header, row):
+
+                # Add the value to the corresponding column in the dictionary
+                if value: # skip empty strings
+                    columns[col].append(value)
+
+    # Return the dictionary
+    return columns
+
+
+# Function to export DGEA results to a .csv file
+def export_dgea_to_csv(
+    adata, # adata
+    dgea_name, # 'rank_gene_groups_clusters_leiden_0.5', name in adata.uns[]
+    n_features,
+    csv_out,
+    wide=False
+):
+    result = adata.uns[dgea_name]
+    groups = result['names'].dtype.names
+
+    if wide:
+        celltype_markers = pd.DataFrame(
+            {group + '_' + key[:-1]: result[key][group]
+            for group in groups for key in ['names', 'logfoldchanges','pvals']}).head(n_features)
+        celltype_markers.to_csv(csv_out, index=False)
+    else:
+        marker_list = list()
+        for group in adata.uns[dgea_name]['names'].dtype.names:
+            markers = sc.get.rank_genes_groups_df(adata, key=dgea_name, group = group).head(n_features)
+            markers["celltypes"] = group
+            marker_list.append(markers)
+        
+        celltype_markers = pd.concat(marker_list, axis=1)
+        celltype_markers.to_csv(csv_out, index=False)

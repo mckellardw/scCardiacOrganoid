@@ -36,10 +36,7 @@ line.width = 0.5
 pt.size=0.01
 pt.stroke=0.3
 label.size=2
-```
 
-## Plot themes 
-```{r}
 source("~/DWM_utils/plotting_utils/scThemes.R")
 scTheme <- scThemes(
   small.font = small.font,
@@ -50,7 +47,7 @@ scTheme <- scThemes(
   label.size=label.size
 )
 ```
-## Personal color palettes
+## Color palettes
 ```{r}
 mckolors <- read.csv("~/DWM_utils/plotting_utils/McKolors_v1.csv") %>% 
   as.list() %>%
@@ -58,10 +55,19 @@ mckolors <- read.csv("~/DWM_utils/plotting_utils/McKolors_v1.csv") %>%
     FUN=function(X) X[X!=""]
   )
 ```
+
+## Color palette for cell types
+```{r}
+
+
+
+```
+
+
 ## Load data
 ```{r}
 if(!exists("scco.seu")){
-  scco.seu <- readRDS("data/robjs/scCO_v7-2.rds")
+  scco.seu <- readRDS("data/robjs/scCO_v7-4.rds")
 }
 
 scco.seu$sample<-factor(
@@ -72,13 +78,13 @@ scco.seu$sample<-factor(
 
 Order cell types...
 ```{r}
-scco.seu$cell_types <- factor(
-  scco.seu$cell_types,
+scco.seu$cell_types_levl2 <- factor(
+  scco.seu$cell_types_levl2,
   levels=c(
     "iPSCs","Primitive_Streak", 
     "Definitive_Endoderm", "Foregut_Epithelium", "Liver_Progenitors",# Endoderm
     "Cardiac_Mesoderm","Fibroblasts","Smooth_Muscle","Endocardial","Epicardial","Cardiomyocytes", # Mesoderm/cardiac
-    "Extraembryonic_Mesoderm"
+    "Non-neural_Ectoderm"
   )
 )
 ```
@@ -112,8 +118,9 @@ ggplot(
 # Cell type plots
 ## Cell types across differentiation
 ```{r fig.height=6, fig.width=10}
-ggplot(
-  scco.seu@meta.data,
+stacked.celltype.600um <- ggplot(
+  # scco.seu@meta.data,
+  scco.seu@meta.data[scco.seu$pattern=="600um",],
   aes(
     x=timepoint,
     fill=cell_types
@@ -140,9 +147,9 @@ ggplot(
     values=mckolors$polychrome#[c(3:16)]
     # values=mckolors$rickandmorty_ggsci
   )
-
+stacked.celltype.600um
 ggsave(
-  filename = "figures/manuscript_figs/stacked_celltype_v1.pdf",
+  filename = "figures/manuscript_figs/stacked_celltype_v2.pdf",
   device = "pdf",
   width = 17.4, #17.4cm max width
   height= 10,
@@ -240,7 +247,7 @@ DimPlot(
 
 
 ```{r}
-group.by=c("time_int","phase","pattern","cell_types")
+group.by=c("time_int","phase","pattern","cell_types_level2")
 cols=list(
   viridis(length(unique(scco.seu$time_int))),
   mckolors$primary,
@@ -253,7 +260,7 @@ for(i in 1:length(group.by)){
   plot.list[[i]]<-DimPlot(
     scco.seu,
     reduction="phate_harmony_sp",
-    cells=sample(Cells(scco.seu)),
+    cells=sample(Cells(scco.seu)[scco.seu$pattern_int==600]),
     group.by = group.by[i],
     # ncol = 4,
     # order = sample(Cells(scco.seu)),
@@ -279,8 +286,14 @@ wrap_plots(
 )
 ```
 
-
+# Build & save Fig 1
 ```{r}
-
+wrap_plots(
+  stacked.celltype.600um,
+  wrap_plots(
+    
+  ),
+  heights = c(1, 5)
+)
 ```
 
