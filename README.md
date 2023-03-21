@@ -1,5 +1,5 @@
 # scCardiacOrganoid
-Time-resolved analysis of iPSC-derived cardiac organoid differentiation
+Time-course analysis of iPSC-derived cardiac organoid differentiation
 
 ![Project overview](TODO.png)
 
@@ -18,6 +18,13 @@ Time-resolved analysis of iPSC-derived cardiac organoid differentiation
 ### Cell-cell interaction tools
 - [`omnipath`](https://omnipathdb.org/)
 - [`cellinker`](http://www.rna-society.org/cellinker/Download.html)
+
+### Software used
+
+scanpy                    1.9.1 
+scrublet                  0.2.3
+soupx
+phate                     1.0.9 
 
 ### Contact:
 - Zhen Ma (zma112@syr.edu)
