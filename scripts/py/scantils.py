@@ -45,10 +45,9 @@ def reorder_reduction(
         print(f"The reduction '{reduction}' was not found...")
 
 
-
 # Read in a list of gene lists from .csv (each column is a gene list)
 ## Useful for plotting
-def read_csv_to_dict(filename):
+def read_csv_to_dict(filename, names2check):
     import csv
 
     # Open the CSV file
@@ -61,7 +60,7 @@ def read_csv_to_dict(filename):
         header = next(reader)
 
         # Create an empty dictionary to store the columns
-        columns = {col: [] for col in header}
+        dict_out = {col: [] for col in header}
 
         # Loop through each row in the CSV file
         for row in reader:
@@ -71,10 +70,15 @@ def read_csv_to_dict(filename):
 
                 # Add the value to the corresponding column in the dictionary
                 if value: # skip empty strings
-                    columns[col].append(value)
+                    dict_out[col].append(value)
+
+    # Filter out unwanted entries based on the list in `names2check`
+    if len(names2check) > 1:
+        for KEY in dict_out.keys():
+            dict_out[KEY] = [k for k in dict_out[KEY] if k in names2check]
 
     # Return the dictionary
-    return columns
+    return dict_out
 
 
 # Function to export DGEA results to a .csv file
@@ -83,8 +87,12 @@ def export_dgea_to_csv(
     dgea_name, # 'rank_gene_groups_clusters_leiden_0.5', name in adata.uns[]
     n_features,
     csv_out,
+    axis=0,     # how to write results for each group (1=horizontal, 0=vertical)
     wide=False
-):
+):    
+    import pandas as pd
+    import scanpy as sc
+
     result = adata.uns[dgea_name]
     groups = result['names'].dtype.names
 
@@ -97,8 +105,14 @@ def export_dgea_to_csv(
         marker_list = list()
         for group in adata.uns[dgea_name]['names'].dtype.names:
             markers = sc.get.rank_genes_groups_df(adata, key=dgea_name, group = group).head(n_features)
-            markers["celltypes"] = group
+            markers['celltypes'] = group
             marker_list.append(markers)
         
-        celltype_markers = pd.concat(marker_list, axis=1)
-        celltype_markers.to_csv(csv_out, index=False)
+        celltype_markers = pd.concat(
+            marker_list, 
+            axis=axis
+        )
+        celltype_markers.to_csv(
+            csv_out,
+            index=False
+        )

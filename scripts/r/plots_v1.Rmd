@@ -269,16 +269,48 @@ for(i in 1:length(group.by)){
   ) +
     scTheme$umap +
     theme(
+      plot.margin = unit(rep(0,4),"cm"),
       plot.title=element_blank(),
-      legend.title=element_blank(),
+      # legend.title=element_blank(),
       legend.text = element_text(size = small.font),
       axis.title = element_blank(),
       axis.line=element_blank(),
       strip.text = element_text(size = small.font,face="bold")
     )+
+    labs(
+      color= group.by[i]
+    )+
     guides(color = guide_legend(override.aes = list(alpha = 1,size=4)))+
     coord_fixed()
 }
+
+plot.list[[3]]<-FeaturePlot(
+  scco.seu,
+  reduction="phate_harmony_sp",
+  cells=sample(Cells(scco.seu)[scco.seu$pattern_int==600]),
+  features  = "dpt_pseudotime",
+  # ncol = 4,
+  # order = sample(Cells(scco.seu)),
+  cols = rev(mckolors$spectral),
+  raster=F
+) +
+  scTheme$umap +
+  xlim(range(scco.seu@reductions$X_phate@cell.embeddings[,1]))+
+  ylim(range(scco.seu@reductions$X_phate@cell.embeddings[,2]))+
+  labs(
+    fill="dpt_pseudotime"
+  )+
+  theme(
+    plot.margin = unit(rep(0,4),"cm"),
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = small.font),
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = small.font,face="bold")
+  )+
+  # guides(color = guide_legend(override.aes = list(alpha = 1,size=4)))+
+  coord_fixed()
 
 wrap_plots(
   plot.list,
@@ -286,14 +318,16 @@ wrap_plots(
 )
 ```
 
+
 # Build & save Fig 1
-```{r}
+```{r fig.height=10, fig.width=14.5}
 wrap_plots(
   stacked.celltype.600um,
   wrap_plots(
-    
+    plot.list,
+    nrow=2
   ),
-  heights = c(1, 5)
+  heights = c(1, 4)
 )
 ```
 
