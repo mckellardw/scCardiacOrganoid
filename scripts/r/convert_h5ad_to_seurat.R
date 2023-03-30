@@ -3,18 +3,23 @@
 # Set workdir ----
 setwd("/workdir/dwm269/scCardiacOrganoid/")
 
+# Load lib(s) -----
+library(glue)
+
 # Custom function built on `anndata-R`----
 source("~/DWM_utils/sc_utils/adata2seu.R")
 
+tmp.name <- "scCO_v1c"
+
 scco.seu <- adata2seu(
-  adata_path="data/pyobjs/scCO_v7-4.h5ad",
+  adata_path=glue("data/pyobjs/{tmp.name}.h5ad"), #7-4
   counts = "counts",
   data = NULL,
   project = "scCardiacOrganoid",
   meta.data = "obs",
   reductions = "obsm",
   graphs = NULL,#"obsp",
-  save.rdata = "data/robjs/scCO_v7-4.rds",
+  save.rdata = glue("data/robjs/{tmp.name}.rds"),
   verbose=T
 )
 

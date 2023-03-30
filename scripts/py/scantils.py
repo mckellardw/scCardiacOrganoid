@@ -47,7 +47,7 @@ def reorder_reduction(
 
 # Read in a list of gene lists from .csv (each column is a gene list)
 ## Useful for plotting
-def read_csv_to_dict(filename, names2check):
+def read_csv_to_dict(filename, names2check=""):
     import csv
 
     # Open the CSV file
