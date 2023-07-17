@@ -10,18 +10,51 @@ library(glue)
 source("~/DWM_utils/sc_utils/adata2seu.R")
 
 tmp.name <- "scCO_v1c"
+if(!exists(glue("data/pyobjs/{tmp.name}.h5ad"))){
+  scco.seu <- adata2seu(
+    adata_path=glue("data/pyobjs/{tmp.name}.h5ad"), #7-4
+    counts = "counts",
+    data = NULL,
+    project = "scCardiacOrganoid",
+    meta.data = "obs",
+    reductions = "obsm",
+    graphs = NULL,#"obsp",
+    save.rdata = glue("data/robjs/{tmp.name}.rds"),
+    verbose=T
+  )
+}
 
-scco.seu <- adata2seu(
-  adata_path=glue("data/pyobjs/{tmp.name}.h5ad"), #7-4
-  counts = "counts",
-  data = NULL,
-  project = "scCardiacOrganoid",
-  meta.data = "obs",
-  reductions = "obsm",
-  graphs = NULL,#"obsp",
-  save.rdata = glue("data/robjs/{tmp.name}.rds"),
-  verbose=T
-)
+# Cardiac/mesoderm subset
+tmp.name <- "mesoderm_2a"
+if(!exists(glue("data/pyobjs/{tmp.name}.h5ad"))){
+  meso.seu <- adata2seu(
+    adata_path=glue("data/pyobjs/{tmp.name}.h5ad"), #7-4
+    counts = "counts",
+    data = NULL,
+    project = "scCardiacOrganoid",
+    meta.data = "obs",
+    reductions = "obsm",
+    graphs = NULL,#"obsp",
+    save.rdata = glue("data/robjs/{tmp.name}.rds"),
+    verbose=T
+  )
+}
+
+# Endoderm subset
+tmp.name <- "endoderm_2a"
+# if(!exists(glue("data/pyobjs/{tmp.name}.h5ad"))){
+#   scco.seu <- adata2seu(
+#     adata_path=glue("data/pyobjs/{tmp.name}.h5ad"), #7-4
+#     counts = "counts",
+#     data = NULL,
+#     project = "scCardiacOrganoid",
+#     meta.data = "obs",
+#     reductions = "obsm",
+#     graphs = NULL,#"obsp",
+#     save.rdata = glue("data/robjs/{tmp.name}.rds"),
+#     verbose=T
+#   )
+# }
 
 #
 # With SeuratDisk (VERY BUGGY, DON'T RECOMMEND) -----

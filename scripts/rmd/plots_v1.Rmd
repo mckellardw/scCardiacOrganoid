@@ -1,0 +1,532 @@
+
+# Session set-up
+## Libs, setwd
+```{r setup}
+knitr::opts_knit$set(root.dir = '/workdir/dwm269/scCardiacOrganoid/')
+```
+
+```{r message=FALSE, warning=FALSE}
+# analysis
+library(Matrix, quietly = T)
+library(dplyr, quietly = T)
+library(Seurat, quietly = T)
+library(future, quietly = T)
+# library(cluster)
+library(parallel, quietly = T)
+library(data.table, quietly = T)
+
+# plotting
+library(ggplot2, quietly = T)
+library(patchwork, quietly = T)
+library(pals, quietly = T)
+library(viridis, quietly = T)
+library(shades, quietly = T)
+
+# DWMutils
+source("~/DWM_utils/sc_utils/seurat_helpers/seutils.R")
+source("~/DWM_utils/sc_utils/seurat_helpers/seuplots.R")
+
+```
+
+## Figure settings
+```{r}
+small.font = 6*2
+big.font = 8*2
+line.width = 0.5
+pt.size=0.01
+pt.stroke=0.3
+label.size=2
+
+source("~/DWM_utils/plotting_utils/scThemes.R")
+scTheme <- scThemes(
+  small.font = small.font,
+  big.font = big.font,
+  line.width = line.width,
+  pt.size=pt.size,
+  pt.stroke=pt.stroke,
+  label.size=label.size
+)
+```
+## Color palettes
+```{r}
+mckolors <- read.csv("~/DWM_utils/plotting_utils/McKolors_v1.csv") %>% 
+  as.list() %>%
+  lapply(
+    FUN=function(X) X[X!=""]
+  )
+```
+
+## Color palette for cell types
+```{r}
+scco_type_cols <- list(
+  iPSCs=gray(0.2),#"#E4E1E3",
+  Primitive_Streak=gray(0.69),"#5A5156", 
+  
+  # Endoderm
+  Definitive_Endoderm="#2ED9FF",
+  Mesothelial="#BDCDFF",
+  Foregut_Epithelium="#325A9B", 
+  Liver_Progenitors="#90AD1C",
+  
+  # Mesoderm
+  Cardiac_Mesoderm="#F8A19F",
+  Fibroblasts="#FEAF16",
+  SMCs_myofibroblasts="#683B79",
+  Endocardial="#DEA0FD",
+  Epicardial="#B00068",
+  Cardiomyocytes="#F6222E", 
+  
+  # Ectoderm
+  Non_neural_Ectoderm="#1C8356"#"#B10DA1"
+)
+```
+
+
+## Load data
+```{r}
+if(!exists("scco.seu")){
+  scco.seu <- readRDS("data/robjs/scCO_v1c.rds")
+}
+
+scco.seu$sample<-factor(
+  scco.seu$sample,
+  levels=sort(unique(scco.seu$sample))
+)
+
+scco.seu
+```
+
+Order cell types...
+```{r}
+scco.seu$cell_types_level2 <- stringr::str_replace_all(
+  scco.seu$cell_types_level2,
+  pattern="-",
+  replacement = "_"
+)
+scco.seu$cell_types_level2 <- stringr::str_replace_all(
+  scco.seu$cell_types_level2,
+  pattern="/",
+  replacement = "_"
+)
+
+scco.seu$cell_types_level2 <- factor(
+  scco.seu$cell_types_level2,
+  levels=c(
+    "iPSCs","Primitive_Streak",
+    "Definitive_Endoderm", "Foregut_Epithelium","Mesothelial", "Liver_Progenitors",# Endoderm
+    "Cardiac_Mesoderm","Fibroblasts","SMCs_myofibroblasts","Endocardial","Epicardial","Cardiomyocytes", # Mesoderm/cardiac
+    "Non_neural_Ectoderm" #Ectoderm
+  )
+)
+```
+
+
+## Plots!
+```{r}
+ggplot(
+    scco.seu@meta.data,
+    aes(
+        x=doublet_score,
+        fill=pattern
+    )
+)+
+    geom_histogram(
+        bins=100
+        # alpha=0.5
+    )+
+    scTheme$bar+
+    theme(
+        legend.position="right",
+        axis.text.y = element_text(angle=0),
+        strip.text = element_text(face="bold")
+    )+scale_y_log10()+
+    facet_wrap(
+        facets="sample"
+    )+labs(fill="Spot Size")
+```
+
+
+# Cell type plots
+## Cell types across differentiation
+```{r fig.height=6, fig.width=10}
+stacked.celltype.600um <- ggplot(
+  # scco.seu@meta.data,
+  scco.seu@meta.data[scco.seu$pattern=="600um",],
+  aes(
+    x=timepoint,
+    fill=cell_types_level2
+  )
+) +
+  geom_bar(
+    color="black",
+    width = 0.5,
+    position="fill"
+  ) +
+  # facet_wrap(facets="pattern",ncol = 1)+
+  scTheme$bar +
+  labs(
+    title="",
+    x="Differentiation Timepoint",
+    y="Cell Type Percent"
+  )+
+  theme(
+    # plot.title = element_blank(),
+    legend.position = "right",
+    legend.title=element_blank(),
+    legend.text = element_text(size = small.font),
+    axis.text.x = element_text(size = small.font),
+    axis.text.y = element_text(size = small.font,angle=0,hjust=1),
+    axis.title.x = element_text(size = small.font, face="bold"),
+    axis.title.y = element_text(size = small.font, face="bold")
+    # axis.title.y = element_blank()
+    # strip.text = element_text(size = small.font,face="bold")
+  ) +
+  scale_y_continuous(labels=scales::percent)+
+  scale_fill_manual(
+    values=unlist(scco_type_cols)
+    # values=mckolors$polychrome#[c(3:16)]
+    # values=mckolors$rickandmorty_ggsci
+  )
+stacked.celltype.600um
+
+# ggsave(
+#   filename = "figures/manuscript_figs/stacked_celltype_v2.pdf",
+#   device = "pdf",
+#   width = 17.4, #17.4cm max width
+#   height= 10,
+#   units = "cm",
+#   dpi = 400
+# )
+```
+PHATE, split.by spot size
+```{r}
+time_int=21
+subset(
+  scco.seu,
+  cells = sample(Cells(scco.seu)[scco.seu$time_int%in%c(time_int)])
+) %>% DimPlot(
+  # scco.seu,
+  reduction="phate_harmony_sp",
+  split.by="pattern",
+  group.by = "cell_types",
+  # cells = Cells(scco.seu)[scco.seu$timepoint=='D4'],
+  cols = mckolors$polychrome,
+  raster=F
+) +
+  # facet_grid(
+  #   rows=vars(timepoint),
+  #   cols=vars(pattern)
+  # )+
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",legend.justification = 'center',
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = 12,face="bold")
+  )+
+  coord_fixed()
+```
+
+PHATE, split.by timepoint
+```{r}
+subset(
+  scco.seu,
+  cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"])
+) %>% DimPlot(
+  # scco.seu,
+  reduction="phate_harmony_sp",
+  split.by="timepoint",
+  # cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"]),
+  group.by = "cell_types",
+  cols = alpha(mckolors$polychrome, 0.7),
+  raster=F
+) +
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",legend.justification = 'center',
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = 12,face="bold")
+  )+
+  coord_fixed()
+
+```
+
+PHATE, split.by spot size & timepoint
+```{r}
+DimPlot(
+  scco.seu,
+  reduction="phate_harmony_sp",
+  # split.by=c("pattern","timepoint"),
+  group.by = "leiden_harmony_sp_1.0", #cell_types
+  # ncol = 4,
+  # order = sample(Cells(scco.seu)),
+  label = T,label.box = T,
+  pt.size = 0.5,
+  cols = alpha(mckolors$polychrome, 0.2),
+  raster=F
+) +
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 12),
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = 12,face="bold")
+  )+
+    guides(color = guide_legend(override.aes = list(alpha = 1,size=4)))+
+  coord_fixed()
+
+```
+
+# Figure 1 - 600um 
+```{r fig.height=10, fig.width=14.5}
+group.by=c(
+  "cell_types_level2",
+  "time_int",
+  "phase",
+  "dpt_pseudotime"
+)
+cols=list(
+  scco_type_cols,                             # cell_types_level2
+  viridis(length(unique(scco.seu$time_int))), # time_int
+  mckolors$primary,                           # Cell Cycle Phase
+  rev(mckolors$spectral)                      # pseudotime_dpt
+  # mckolors$
+)
+guide.labs=c(
+  "Cell Types",
+  "Differentiation\nTimepoint\n(Days)",
+  "Cell Cycle\nPhase",
+  "Diffusion\nPseudotime"
+  # "Pattern Size"
+)
+phate.list <- list()
+
+for(i in 1:length(group.by)){ # Categorical variables
+  if(group.by[i] == "cell_types_level2"){
+    tmp.pt.size = 0.5
+    label.clusters = T
+  }else{
+    tmp.pt.size = 0.01
+    label.clusters = F
+  }
+  
+  if(group.by[i] != "dpt_pseudotime"){
+    phate.list[[i]]<-DimPlot(
+      scco.seu,
+      reduction="phate_harmony_sp",
+      cells=sample(Cells(scco.seu)[scco.seu$pattern_int==600]), # randomly order the plot!
+      group.by = group.by[i],
+      label = label.clusters,
+      pt.size = tmp.pt.size,
+      cols = alpha(cols[[i]], 0.4),
+      raster=F
+    ) +
+      scTheme$umap +
+      theme(
+        plot.margin = unit(rep(0,4),"cm"),
+        plot.title=element_blank(),
+        legend.text = element_text(size = small.font),
+        legend.title = element_text(size = small.font, face="bold",hjust=0.5),
+        axis.title = element_blank(),
+        axis.line=element_blank()
+        # strip.text = element_text(size = small.font,face="bold")
+      )+
+      labs(
+        color= guide.labs[i]
+      )+
+      guides(color = guide_legend(override.aes = list(alpha = 1,size=4)))+
+      # NoLegend()+
+      coord_fixed()
+  }else{ # Diffusion Pseudotime
+    phate.list[[i]]<-FeaturePlot(
+      scco.seu,
+      reduction="phate_harmony_sp",
+      cells=sample(Cells(scco.seu)[scco.seu$pattern_int==600]), # randomly order the plot!
+      features  = "dpt_pseudotime",
+      pt.size = tmp.pt.size,
+      cols = alpha(cols[[i]], 0.4),
+      raster=F
+    ) +
+      scTheme$umap +
+      xlim(range(scco.seu@reductions$X_phate@cell.embeddings[,1]))+
+      ylim(range(scco.seu@reductions$X_phate@cell.embeddings[,2]))+
+      labs(
+        color=guide.labs[i]
+      )+
+      theme(
+        plot.margin = unit(rep(0,4),"cm"),
+        plot.title=element_blank(),
+        legend.text = element_text(size = small.font),
+        legend.title = element_text(size = small.font, face="bold",hjust=0.5),
+        axis.title = element_blank(),
+        axis.line=element_blank()
+      )+
+      # NoLegend()+
+      coord_fixed()
+  }
+}
+
+
+wrap_plots(
+  phate.list[[1]],
+  wrap_plots(
+    phate.list[2:length(phate.list)],
+    ncol=1
+  ),
+  ncol=2
+)
+```
+
+
+# Build & save Fig 1
+```{r fig.height=10, fig.width=14.5}
+# wrap_plots(
+#   stacked.celltype.600um +
+#     NoLegend(),
+#   wrap_plots(
+#     phate.list[[1]],
+#     wrap_plots(
+#       phate.list[2:4],
+#       ncol=1
+#     ),
+#     ncol=2
+#   ),
+#   # heights = c(1, 4)
+#   heights = c(1, 3)
+# )
+
+# wrap_plots(
+#   wrap_plots(
+#     phate.list[[1]],
+#     stacked.celltype.600um,
+#     # guides="collect",
+#     ncol=1,
+#     heights = c(4, 1.25)
+#   ),
+#   
+#   wrap_plots(
+#     phate.list[2:4],
+#     ncol=1
+#   ),
+#   ncol=2,
+#   widths = c(2,1)
+# )
+
+wrap_plots(
+  wrap_plots(
+    wrap_plots(
+      plot_spacer(),
+      phate.list[[1]]+NoLegend(),
+      ncol=1,
+      heights = c(1,7)
+    ),
+    stacked.celltype.600um+
+      theme(legend.position = "bottom"),
+    ncol=1,
+    heights = c(3,1)
+  ),
+  
+  wrap_plots(
+    phate.list[2:4],
+    ncol=1
+  ),
+  ncol=2,
+  widths = c(2,1)
+)
+
+filetype="pdf"
+ggsave(
+  filename = paste0("figures/manuscript_figs/Fig1_600um_v2.",filetype),
+  device = filetype,
+  width = 17.2*2, #17.4cm max width for Nat/Springer, 17.2 for Cell/Elsevier
+  height= 19*2,
+  units = "cm",
+  dpi = 400
+)
+```
+
+# QC fig (S1?)
+```{r}
+wrap_plots(
+  ggplot(
+    scco.seu@meta.data,
+    aes(
+      x=sample,
+      y=n_counts,
+      color=timepoint,
+      fill=timepoint
+    )
+  )+
+    geom_violin()+
+    geom_boxplot(
+      width=0.1,
+      outlier.size=0,
+      color=gray(0.69)
+    )+
+    scale_y_continuous(
+      trans = "log10"
+    )+
+    labs(
+      y="# UMIs"
+    ),
+  
+  ggplot(
+    scco.seu@meta.data,
+    aes(
+      x=sample,
+      y=n_genes,
+      color=timepoint,
+      fill=timepoint
+    )
+  )+
+    geom_violin()+
+    geom_boxplot(
+      width=0.1,
+      outlier.size=0,
+      color=gray(0.69)
+    )+
+    scale_y_continuous(
+      trans = "log10"
+    )+
+    labs(
+      y="# Features"
+    ),
+  
+  ggplot(
+    scco.seu@meta.data,
+    aes(
+      x=sample,
+      y=pct_counts_mito,
+      color=timepoint,
+      fill=timepoint
+    )
+  )+
+    geom_violin()+
+    geom_boxplot(
+      width=0.1,
+      outlier.size=0,
+      color=gray(0.69)
+    )+
+    labs(
+      y="% Mitochondrial"
+    ),
+  
+  ncol=1
+)&
+  scTheme$vln&
+  theme(
+    legend.position = "None"
+  )&
+  scale_color_viridis_d()&
+  scale_fill_viridis_d()
+```
+

@@ -32,9 +32,9 @@ meta
 
 # Load dataset
 ```{r}
-rdata.path <- "/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-4.rds"
+rdata.path <- "/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v1c.rds"
 if(!file.exists(rdata.path)){
-  system("Rscript scripts/r/convert_h5ad_to_seurat.R") # run R script to convert anndata to seurat
+  # system("Rscript scripts/r/convert_h5ad_to_seurat.R") # run R script to convert anndata to seurat
 }else(
   scco.seu <- readRDS(rdata.path)
 )
@@ -184,7 +184,7 @@ Save CellChat list
 ```{r}
 save(
   scco.chat.list,
-  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-4_cellchat_list.RData"
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v1c_cellchat_list.RData"
 )
 ```
 
@@ -201,7 +201,7 @@ Save CellChat object
 ```{r}
 save(
   scco.chat,
-  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-4_cellchat.RData"
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v1c_cellchat.RData"
 )
 ```
 

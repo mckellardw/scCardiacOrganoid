@@ -1,3 +1,8 @@
+# Analysis of CellChat results
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "/workdir/dwm269/scCardiacOrganoid/")
+```
 
 # Load libs
 ```{r message=FALSE, warning=FALSE}
@@ -22,13 +27,11 @@ source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seutils.R")
 source("/home/dwm269/DWM_utils/sc_utils/seurat_helpers/seuplots.R")
 source("/home/dwm269/DWM_utils/plotting_utils/scThemes.R")
 scTheme <- scThemes()
+
+source("scripts/r/cellchat_helpers.R")
 ```
 
-
-```{r setup}
-knitr::opts_knit$set(root.dir = "/workdir/dwm269/scCardiacOrganoid/")
-```
-
+# load data/metadata
 ```{r}
 meta <- read.csv("/workdir/dwm269/scCardiacOrganoid/resources/metadata.csv")
 meta <- meta[meta$include,]
@@ -38,13 +41,10 @@ meta
 Load CellChat object(s)
 ```{r}
 load(
-  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-2_cellchat_list.RData"
+  file="/workdir/dwm269/scCardiacOrganoid/data/robjs/scCO_v7-4_cellchat_list.RData"
 )
 ```
 
-```{r}
-source("scripts/r/cellchat_helpers.R")
-```
 
 # CellChat info...
 ```{r}
