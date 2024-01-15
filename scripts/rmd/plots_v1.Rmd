@@ -21,6 +21,7 @@ library(patchwork, quietly = T)
 library(pals, quietly = T)
 library(viridis, quietly = T)
 library(shades, quietly = T)
+library(glue, quietly = T)
 
 # DWMutils
 source("~/DWM_utils/sc_utils/seurat_helpers/seutils.R")
@@ -77,7 +78,7 @@ scco_type_cols <- list(
   Cardiomyocytes="#F6222E", 
   
   # Ectoderm
-  Non_neural_Ectoderm="#1C8356"#"#B10DA1"
+  Non_neural_Ectoderm="#1C8356" #"#B10DA1"
 )
 ```
 
@@ -120,8 +121,7 @@ scco.seu$cell_types_level2 <- factor(
 )
 ```
 
-
-## Plots!
+# Assorted QC Plots
 ```{r}
 ggplot(
     scco.seu@meta.data,
@@ -146,8 +146,10 @@ ggplot(
 ```
 
 
-# Cell type plots
-## Cell types across differentiation
+
+
+# Figure 1 - 600um 
+## Cell types across differentiation (stacked bar plot)
 ```{r fig.height=6, fig.width=10}
 stacked.celltype.600um <- ggplot(
   # scco.seu@meta.data,
@@ -198,95 +200,8 @@ stacked.celltype.600um
 #   dpi = 400
 # )
 ```
-PHATE, split.by spot size
-```{r}
-time_int=21
-subset(
-  scco.seu,
-  cells = sample(Cells(scco.seu)[scco.seu$time_int%in%c(time_int)])
-) %>% DimPlot(
-  # scco.seu,
-  reduction="phate_harmony_sp",
-  split.by="pattern",
-  group.by = "cell_types",
-  # cells = Cells(scco.seu)[scco.seu$timepoint=='D4'],
-  cols = mckolors$polychrome,
-  raster=F
-) +
-  # facet_grid(
-  #   rows=vars(timepoint),
-  #   cols=vars(pattern)
-  # )+
-  scTheme$umap +
-  theme(
-    plot.title=element_blank(),
-    legend.title=element_blank(),
-    legend.text = element_text(size = 12),
-    legend.position = "bottom",legend.justification = 'center',
-    axis.title = element_blank(),
-    axis.line=element_blank(),
-    strip.text = element_text(size = 12,face="bold")
-  )+
-  coord_fixed()
-```
 
-PHATE, split.by timepoint
-```{r}
-subset(
-  scco.seu,
-  cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"])
-) %>% DimPlot(
-  # scco.seu,
-  reduction="phate_harmony_sp",
-  split.by="timepoint",
-  # cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"]),
-  group.by = "cell_types",
-  cols = alpha(mckolors$polychrome, 0.7),
-  raster=F
-) +
-  scTheme$umap +
-  theme(
-    plot.title=element_blank(),
-    legend.title=element_blank(),
-    legend.text = element_text(size = 12),
-    legend.position = "bottom",legend.justification = 'center',
-    axis.title = element_blank(),
-    axis.line=element_blank(),
-    strip.text = element_text(size = 12,face="bold")
-  )+
-  coord_fixed()
 
-```
-
-PHATE, split.by spot size & timepoint
-```{r}
-DimPlot(
-  scco.seu,
-  reduction="phate_harmony_sp",
-  # split.by=c("pattern","timepoint"),
-  group.by = "leiden_harmony_sp_1.0", #cell_types
-  # ncol = 4,
-  # order = sample(Cells(scco.seu)),
-  label = T,label.box = T,
-  pt.size = 0.5,
-  cols = alpha(mckolors$polychrome, 0.2),
-  raster=F
-) +
-  scTheme$umap +
-  theme(
-    plot.title=element_blank(),
-    legend.title=element_blank(),
-    legend.text = element_text(size = 12),
-    axis.title = element_blank(),
-    axis.line=element_blank(),
-    strip.text = element_text(size = 12,face="bold")
-  )+
-    guides(color = guide_legend(override.aes = list(alpha = 1,size=4)))+
-  coord_fixed()
-
-```
-
-# Figure 1 - 600um 
 ```{r fig.height=10, fig.width=14.5}
 group.by=c(
   "cell_types_level2",
@@ -387,7 +302,7 @@ wrap_plots(
 ```
 
 
-# Build & save Fig 1
+## Build & save Fig 1
 ```{r fig.height=10, fig.width=14.5}
 # wrap_plots(
 #   stacked.celltype.600um +
@@ -454,7 +369,167 @@ ggsave(
 )
 ```
 
-# QC fig (S1?)
+# Fig 2 - spot sizes
+PHATE, split.by spot size for 20um and 1000um samples
+```{r}
+time_ints=c(4,21)
+time_size.list <- list()
+
+for(i in 1:length(time_ints)){
+  time_size.list[[i]] <- subset(
+    scco.seu,
+    cells = sample(Cells(scco.seu)[scco.seu$time_int%in%c(time_ints[i])])
+  ) %>% DimPlot(
+    # scco.seu,
+    reduction="phate_harmony_sp",
+    split.by="pattern",
+    group.by = "cell_types_level2",
+    # pt.size = 0.5,
+    cols = alpha(scco_type_cols,alpha = 0.7),
+    raster=F
+  ) +
+    scTheme$umap +
+    labs(
+      y = glue("Differentiation\nTimepoint (D{time_ints[i]})")
+    )+
+    theme(
+      plot.title=element_blank(),
+      legend.title=element_blank(),
+      legend.text = element_text(size = small.font),
+      legend.position = "bottom",
+      legend.justification = 'center',
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(vjust=0.5, hjust=0.5, face="bold", size=big.font),
+      axis.line=element_blank(),
+      strip.text = element_text(size = big.font,face="bold")
+    )+
+    guides(color = guide_legend(override.aes = list(alpha = 1,size=4)))+
+    coord_fixed()
+}
+```
+
+Draw and save the plot
+```{r}
+wrap_plots(
+  time_size.list,
+  ncol=1,
+  guides = "collect"
+)&theme(
+  legend.box = "vertical",
+  legend.position = "right"
+)
+
+filetype="png"
+ggsave(
+  filename = paste0("figures/manuscript_figs/phate_200um_1000um_celltype-splitby_day.",filetype),
+  device = filetype,
+  width = 17.2*2, #17.4cm max width for Nat/Springer, 17.2 for Cell/Elsevier
+  height= 10*2,
+  units = "cm",
+  dpi = 600
+)
+```
+
+PHATE, split.by timepoint
+```{r}
+subset(
+  scco.seu,
+  cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"])
+) %>% DimPlot(
+  # scco.seu,
+  reduction="phate_harmony_sp",
+  split.by="timepoint",
+  # cells = sample(Cells(scco.seu)[scco.seu$pattern=="600um"]),
+  group.by = "cell_types",
+  cols = alpha(scco_type_cols, 0.7),
+  raster=F
+) +
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = small.font),
+    legend.position = "bottom",legend.justification = 'center',
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = big.font,face="bold")
+  )+
+  coord_fixed()
+
+filetype="pdf"
+ggsave(
+  filename = paste0("figures/manuscript_figs/phate_600um_celltype-splitby_day.",filetype),
+  device = filetype,
+  width = 17.2*2, #17.4cm max width for Nat/Springer, 17.2 for Cell/Elsevier
+  height= 5*2,
+  units = "cm",
+  dpi = 600
+)
+```
+
+PHATE, split.by spot size & timepoint
+```{r}
+DimPlot(
+  scco.seu,
+  reduction="phate_harmony_sp",
+  # split.by=c("pattern","timepoint"),
+  group.by = "cell_types_level2", #cell_types
+  # ncol = 4,
+  # order = sample(Cells(scco.seu)),
+  label = T,label.box = T,
+  pt.size = 0.5,
+  cols = alpha(scco_type_cols, 0.2),
+  raster=F
+) +
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = small.font),
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = big.font,face="bold")
+  )+
+    guides(color = guide_legend(override.aes = list(alpha = 1,size=4)))+
+  coord_fixed()
+
+```
+
+## Build Fig2
+```{r}
+# wrap_plots(
+#   wrap_plots(
+#     
+#     wrap_plots(
+#       time_size.list,
+#       ncol=1,
+#       guides = "collect"
+#     )&theme(
+#       legend.box = "vertical",
+#       legend.position = "right"
+#     ),
+#     
+#     plot_spacer(),
+#     ncol = 1
+#   ),
+#   
+#   plot_spacer(),
+#   nrow = 1
+# )
+
+# filetype="png"
+# ggsave(
+#   filename = paste0("figures/manuscript_figs/phate_200um_1000um_celltype-splitby_day.",filetype),
+#   device = filetype,
+#   width = 17.2*2, #17.4cm max width for Nat/Springer, 17.2 for Cell/Elsevier
+#   height= 5*2,#19*2,
+#   units = "cm",
+#   dpi = 600
+# )
+```
+
+#
+# QC fig (S1?) 
 ```{r}
 wrap_plots(
   ggplot(
@@ -528,5 +603,119 @@ wrap_plots(
   )&
   scale_color_viridis_d()&
   scale_fill_viridis_d()
+
+
+filetype="pdf"
+ggsave(
+  filename = paste0("figures/manuscript_figs/S_qc_vln_plots.",filetype),
+  device = filetype,
+  width = 17.2*2, #17.4cm max width for Nat/Springer, 17.2 for Cell/Elsevier
+  height= 8*2,#19*2,
+  units = "cm",
+  dpi = 600
+)
+```
+
+# Cell types across differentiation for all spot sizes (stacked bar plot)
+```{r fig.height=6, fig.width=10}
+stacked.celltype <- ggplot(
+  # scco.seu@meta.data,
+  scco.seu@meta.data,
+  aes(
+    x=timepoint,
+    fill=cell_types_level2
+  )
+) +
+  geom_bar(
+    color="black",
+    width = 0.5,
+    position="fill"
+  ) +
+  facet_wrap(facets="pattern",ncol = 1)+
+  scTheme$bar +
+  labs(
+    title="",
+    x="Differentiation Timepoint",
+    y="Cell Type Percent"
+  )+
+  theme(
+    # plot.title = element_blank(),
+    legend.position = "right",
+    legend.title=element_blank(),
+    legend.text = element_text(size = small.font),
+    axis.text.x = element_text(size = small.font),
+    axis.text.y = element_text(size = small.font,angle=0,hjust=1),
+    axis.title.x = element_text(size = small.font, face="bold"),
+    axis.title.y = element_text(size = small.font, face="bold")
+    # axis.title.y = element_blank()
+    # strip.text = element_text(size = small.font,face="bold")
+  ) +
+  scale_y_continuous(labels=scales::percent)+
+  scale_fill_manual(
+    values=unlist(scco_type_cols)
+    # values=mckolors$polychrome#[c(3:16)]
+    # values=mckolors$rickandmorty_ggsci
+  )
+stacked.celltype
+
+# ggsave(
+#   filename = "figures/manuscript_figs/stacked_celltype_v2.pdf",
+#   device = "pdf",
+#   width = 17.4, #17.4cm max width
+#   height= 10,
+#   units = "cm",
+#   dpi = 400
+# )
+```
+
+```{r}
+lapply(
+  c(
+    "X_phate","phate_harmony_s","phate_harmony_sp"
+  ),
+  FUN = function(RED) DimPlot(
+  scco.seu,
+  reduction=RED,
+  cells = sample(Cells(scco.seu)),
+  group.by = "sample",
+  # cols = alpha(scco_type_cols, 0.7),
+  cols=viridis(length(unique(scco.seu$sample))),
+  raster=F
+) +
+  scTheme$umap +
+  theme(
+    plot.title=element_blank(),
+    legend.title=element_blank(),
+    legend.text = element_text(size = small.font),
+    legend.position = "bottom",legend.justification = 'center',
+    axis.title = element_blank(),
+    axis.line=element_blank(),
+    strip.text = element_text(size = big.font,face="bold")
+  )+
+  # NoLegend()+
+  coord_fixed()
+) %>%
+  wrap_plots(
+    guides="collect",
+    nrow = 1
+  )&theme(
+    legend.position = "bottom",legend.justification = 'center'
+  )
+
+filetype="pdf"
+ggsave(
+  filename = paste0("figures/manuscript_figs/reduction_comparison.",filetype),
+  device = filetype,
+  width = 17.2*2, #17.4cm max width for Nat/Springer, 17.2 for Cell/Elsevier
+  height= 8*2,
+  units = "cm",
+  dpi = 600
+)
+```
+
+
+# Session Info
+```{r}
+sessionInfo()
 ```
 
