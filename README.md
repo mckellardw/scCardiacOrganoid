@@ -1,7 +1,7 @@
 # scCardiacOrganoid
 Time-course analysis of iPSC-derived cardiac organoid differentiation
 
-![Project overview](TODO.png)
+![Project overview](Fig1_v1.png)
 
 ### Collaboration between the Ma (Syracuse) and Cosgrove (Cornell) labs
 
