@@ -13,7 +13,7 @@ Time-course analysis of iPSC-derived cardiac organoid differentiation
 *see README files in each subdirectory for more details*
 
 ### Data generated for this paper:
-- scRNAseq datasets: [GSE###](TODO)
+- scRNAseq datasets: [GSE293554](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE293554)
 
 ### Contact:
 - Zhen Ma (zma112@syr.edu)
